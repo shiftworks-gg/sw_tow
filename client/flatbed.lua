@@ -71,6 +71,7 @@ local ramps = {}
 ---@field transforms { pos: vector3, rot: vector3 }[]
 ---@field angle number slope in degrees
 ---@field footY number truck-space y where the ramps touch the ground
+---@field foot vector3 world point where the ramps touch the ground
 ---@field info string numbers for the preview and debug output
 
 ---Where the ramps go. The driving surface is taken as the model's diagonal from its lower rear
@@ -116,6 +117,7 @@ local function rampGeometry(truck)
         transforms = list,
         angle = math.deg(slope),
         footY = toTruck(truck, foot).y,
+        foot = foot,
         info = ('size %.2f x %.2f x %.2f, bed %.2f m above ground, slope %.0f°, tilted %.0f°%s'):format(
             max.x - min.x, dy, dz, rise, math.deg(slope), math.deg(tilt), flip and ', flipped' or ''),
     }
@@ -150,38 +152,7 @@ local function placeRamps(truck)
     end
     SetModelAsNoLongerNeeded(model)
     ramps[truck] = list
-    flatbed.drawGuide(truck, list, geometry)
     if config.debug then print('[sw_tow] ramps: ' .. geometry.info) end
-end
-
----Ground marking behind the ramps for the worker who owns the truck: the centre line the vehicle
----must stand on and the stop line its bumper must stay behind. Drawn only while the ramps are down.
----@param truck integer
----@param list integer[]
----@param geometry SwRampGeometry
-function flatbed.drawGuide(truck, list, geometry)
-    local shift = require 'client.shift'
-    if shift.truck() ~= truck then return end
-    local stopY = geometry.footY - 0.3
-    local function at(x, y)
-        local p = GetOffsetFromEntityInWorldCoords(truck, x, y, 0.0)
-        local found, z = GetGroundZFor_3dCoord(p.x, p.y, p.z + 1.0, false)
-        return vec3(p.x, p.y, (found and z or p.z) + 0.03)
-    end
-    local stopL, stopR = at(-1.3, stopY), at(1.3, stopY)
-    local lineA, lineB = at(0.0, stopY), at(0.0, stopY - 9.0)
-    local edges = { { at(-0.8, stopY), at(-3.8, stopY - 9.0) }, { at(0.8, stopY), at(3.8, stopY - 9.0) } }
-    CreateThread(function()
-        while ramps[truck] == list do
-            DrawLine(stopL.x, stopL.y, stopL.z, stopR.x, stopR.y, stopR.z, 255, 122, 46, 255)
-            DrawLine(lineA.x, lineA.y, lineA.z, lineB.x, lineB.y, lineB.z, 255, 122, 46, 255)
-            for i = 1, 2 do
-                local a, b = edges[i][1], edges[i][2]
-                DrawLine(a.x, a.y, a.z, b.x, b.y, b.z, 255, 122, 46, 120)
-            end
-            Wait(0)
-        end
-    end)
 end
 
 AddStateBagChangeHandler('sw_tow:ramps', '', function(bagName, _, value)
@@ -200,11 +171,36 @@ function flatbed.rampsDown(truck)
     return Entity(truck).state['sw_tow:ramps'] == true
 end
 
+---Can the ramps stand here? The truck must not lean, and the ground under the ramp foot must be
+---where the ramps expect it on both sides: a kerb or a pothole would leave them crooked.
+---@param truck integer
+---@return boolean ok, string? errorKey
+function flatbed.level(truck)
+    if math.abs(GetEntityRoll(truck)) > 4.0 or math.abs(GetEntityPitch(truck)) > 6.0 then return false, 'tow.uneven' end
+    local ok, model = pcall(lib.requestModel, cfg.ramp.model)
+    if not ok or not model then return false, 'tow.no_ramps' end
+    local geometry = rampGeometry(truck)
+    SetModelAsNoLongerNeeded(model)
+    if not geometry then return false, 'tow.no_ramps' end
+    local _, right = axes(truck)
+    local foot = geometry.foot
+    for _, side in ipairs({ -0.9, 0.9 }) do
+        local p = foot + right * side
+        local found, z = GetGroundZFor_3dCoord(p.x, p.y, p.z + 1.0, false)
+        if not found or math.abs(z - foot.z) > 0.25 then return false, 'tow.uneven' end
+    end
+    return true
+end
+
 ---@param truck integer
 ---@param down boolean
 ---@return boolean ok, string? errorKey
 function flatbed.setRamps(truck, down)
-    if down and GetEntitySpeed(truck) > 0.5 then return false, 'tow.truck_moving' end
+    if down then
+        if GetEntitySpeed(truck) > 0.5 then return false, 'tow.truck_moving' end
+        local level, levelError = flatbed.level(truck)
+        if not level then return false, levelError end
+    end
     local ok, errorKey = lib.callback.await('sw_tow:server:ramps', false, VehToNet(truck), down)
     if not ok then return false, errorKey end
     -- Wait for our own copy of the ramps, so physics never starts before they exist.
@@ -277,7 +273,7 @@ local function drive(pull)
                 else
                     hold = true
                     heldSince = heldSince or now
-                    if now - heldSince > 4000 then return false, 'misaligned' end
+                    if now - heldSince > 6000 then return false, 'misaligned' end
                 end
             end
         end
@@ -348,27 +344,55 @@ local function glideOntoBed(truck, target)
     end
 end
 
----Can the winch pull this vehicle straight up the ramps from where it stands? The cable only pulls
----towards the truck, so the vehicle must be behind the ramp foot, roughly in line and not turned
----more than 30°. The further back it stands, the more sideways offset the pull can straighten out.
+---@class SwLineUp
+---@field ok boolean
+---@field key string? locale key of the first problem
+---@field value number? metres or degrees for that message
+---@field geometry SwRampGeometry?
+
+---How the vehicle stands for loading. The cable only pulls towards the truck, so the leading end
+---must be behind the ramp foot and within winch range. Sideways offset and angle get a generous
+---allowance: the winch straightens the vehicle on the ground before it climbs, and the further
+---back it stands, the more offset it can take out.
 ---@param truck integer
 ---@param target integer
----@return boolean ok, string? errorKey
+---@param geometry? SwRampGeometry
+---@return SwLineUp
+function flatbed.assess(truck, target, geometry)
+    geometry = geometry or rampGeometry(truck)
+    if not geometry then return { ok = false, key = 'tow.no_ramps' } end
+    local lead, _, facing = leadingEnd(truck, target)
+    local gap = geometry.footY - lead
+    local centre = toTruck(truck, GetEntityCoords(target))
+    local heading = GetEntityHeading(truck) + (facing and 0.0 or 180.0)
+    local angle = math.abs(((heading - GetEntityHeading(target) + 180.0) % 360.0) - 180.0)
+    local sideLimit = math.min(3.0, 0.5 + math.max(0.0, gap) * 0.35)
+
+    local result = { ok = false, geometry = geometry }
+    if angle > 45.0 then
+        result.key, result.value = 'tow.off_angle', angle
+    elseif gap < 0.3 then
+        result.key, result.value = 'tow.too_close', 0.3 - gap
+    elseif gap > cfg.winchRange then
+        result.key, result.value = 'tow.too_far', gap - cfg.winchRange
+    elseif math.abs(centre.x) > sideLimit then
+        result.key, result.value = 'tow.off_side', math.abs(centre.x) - sideLimit
+    else
+        result.ok = true
+    end
+    return result
+end
+
+---@param truck integer
+---@param target integer
+---@return boolean ok, string? errorKey, string? value
 function flatbed.lineUp(truck, target)
     local ok, model = pcall(lib.requestModel, cfg.ramp.model)
     if not ok or not model then return false, 'tow.no_ramps' end
-    local geometry = rampGeometry(truck)
+    local result = flatbed.assess(truck, target)
     SetModelAsNoLongerNeeded(model)
-    if not geometry then return false, 'tow.no_ramps' end
-
-    local lead, _, facing = leadingEnd(truck, target)
-    local gap = geometry.footY - lead
-    if gap < 0.3 then return false, 'tow.too_close' end
-    local centre = toTruck(truck, GetEntityCoords(target))
-    local heading = GetEntityHeading(truck) + (facing and 0.0 or 180.0)
-    local err = ((heading - GetEntityHeading(target) + 180.0) % 360.0) - 180.0
-    if math.abs(err) > 30.0 or math.abs(centre.x) > 0.5 + gap / 3.0 then return false, 'tow.not_in_line' end
-    return true
+    if result.ok then return true end
+    return false, result.key, result.value and ('%.0f'):format(result.value) or nil
 end
 
 ---Loads `target` onto `truck`: ramps down, winch it to the ramp foot and straighten it there, pull
@@ -400,7 +424,7 @@ function flatbed.load(truck, target)
     if not ok and why == 'gone' then return false, 'tow.no_control' end
     if not ok and why == 'misaligned' then
         -- Still on the ground: leave it there rather than drag it up crooked.
-        return false, 'tow.not_in_line'
+        return false, 'tow.not_straight'
     end
     Wait(400)  -- Let the suspension settle before the pose is frozen.
     if ok then
@@ -486,8 +510,124 @@ function flatbed.previewRamps(truck, models)
     cfg.ramp.model = saved
 end
 
+-- Parking guide ----------------------------------------------------------------------------------
+-- While the worker has an empty company flatbed and a vehicle stands behind it, a hint says what to
+-- change ("forward 2 m") and the ground behind the ramps is tinted: orange, green once it is fine.
+-- Runs only on shift and near the truck; nothing runs otherwise.
+
+local guideBusy = false
+
+---@param busy boolean
+function flatbed.setBusy(busy)
+    guideBusy = busy
+end
+
+---The vehicle most likely meant for loading: the closest one standing behind the truck.
+---@param truck integer
+---@return integer?
+local function candidateBehind(truck)
+    local min = GetModelDimensions(GetEntityModel(truck))
+    local best, bestDistance
+    for _, vehicle in ipairs(GetGamePool('CVehicle')) do
+        if vehicle ~= truck and not Entity(vehicle).state['sw_tow:company'] and not Entity(vehicle).state['sw_tow:towedBy'] then
+            local p = toTruck(truck, GetEntityCoords(vehicle))
+            if p.y < min.y and p.y > min.y - 26.0 and math.abs(p.x) < 8.0 then
+                local distance = min.y - p.y + math.abs(p.x)
+                if not bestDistance or distance < bestDistance then best, bestDistance = vehicle, distance end
+            end
+        end
+    end
+    return best
+end
+
+---Corner points of the loading zone on the ground, in strips so it follows slopes.
+---@param truck integer
+---@param geometry SwRampGeometry
+---@return vector3[][]
+local function zoneStrips(truck, geometry)
+    local function at(x, y)
+        local p = GetOffsetFromEntityInWorldCoords(truck, x, y, 0.0)
+        local found, z = GetGroundZFor_3dCoord(p.x, p.y, p.z + 2.0, false)
+        return vec3(p.x, p.y, (found and z or p.z) + 0.04)
+    end
+    local strips, steps = {}, 5
+    for i = 0, steps - 1 do
+        local g0, g1 = 0.3 + (cfg.winchRange - 0.3) * i / steps, 0.3 + (cfg.winchRange - 0.3) * (i + 1) / steps
+        local w0, w1 = math.min(3.0, 0.5 + g0 * 0.35) + 1.0, math.min(3.0, 0.5 + g1 * 0.35) + 1.0
+        local y0, y1 = geometry.footY - g0, geometry.footY - g1
+        strips[#strips + 1] = { at(-w0, y0), at(w0, y0), at(w1, y1), at(-w1, y1) }
+    end
+    return strips
+end
+
+local function drawZone(strips, r, g, b)
+    for i = 1, #strips do
+        local q = strips[i]
+        -- Both windings, so the tint shows from above at any camera angle.
+        DrawPoly(q[1].x, q[1].y, q[1].z, q[2].x, q[2].y, q[2].z, q[3].x, q[3].y, q[3].z, r, g, b, 70)
+        DrawPoly(q[3].x, q[3].y, q[3].z, q[2].x, q[2].y, q[2].z, q[1].x, q[1].y, q[1].z, r, g, b, 70)
+        DrawPoly(q[1].x, q[1].y, q[1].z, q[3].x, q[3].y, q[3].z, q[4].x, q[4].y, q[4].z, r, g, b, 70)
+        DrawPoly(q[4].x, q[4].y, q[4].z, q[3].x, q[3].y, q[3].z, q[1].x, q[1].y, q[1].z, r, g, b, 70)
+    end
+    local a, b2 = strips[1][1], strips[1][2]
+    DrawLine(a.x, a.y, a.z, b2.x, b2.y, b2.z, r, g, b, 255)
+end
+
+local shownText
+
+local function showHint(text)
+    if text == shownText then return end
+    shownText = text
+    if text then lib.showTextUI(text, { position = 'right-center' }) else lib.hideTextUI() end
+end
+
+local function runGuide()
+    local shift = require 'client.shift'
+    local modelLoaded = false
+    local truck, target, strips, result
+    local nextCheck = 0
+    while LocalPlayer.state['sw_tow:shift'] do
+        local now = GetGameTimer()
+        if now >= nextCheck then
+            nextCheck = now + 300
+            truck, target, strips, result = shift.truck(), nil, nil, nil
+            if truck and not guideBusy and Entity(truck).state['sw_tow:method'] == 'flatbed'
+                and not Entity(truck).state['sw_tow:cargo'] and #(GetEntityCoords(cache.ped) - GetEntityCoords(truck)) < 20.0 then
+                if not modelLoaded then modelLoaded = pcall(lib.requestModel, cfg.ramp.model) end
+                target = modelLoaded and candidateBehind(truck) or nil
+                if target then
+                    local geometry = rampGeometry(truck)
+                    if geometry then
+                        result = flatbed.assess(truck, target, geometry)
+                        strips = zoneStrips(truck, geometry)
+                    end
+                end
+            end
+            if result then
+                showHint(result.ok and locale('tow.guide_ok')
+                    or locale(result.key, result.value and ('%.0f'):format(math.max(1, result.value)) or nil))
+            else
+                showHint(nil)
+            end
+        end
+        if strips and result then
+            if result.ok then drawZone(strips, 76, 196, 126) else drawZone(strips, 255, 122, 46) end
+            Wait(0)
+        else
+            Wait(300)
+        end
+    end
+    showHint(nil)
+    if modelLoaded then SetModelAsNoLongerNeeded(joaat(cfg.ramp.model)) end
+end
+
+AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)
+    if value then CreateThread(runGuide) end
+end)
+
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= cache.resource then return end
+    showHint(nil)
     for truck in pairs(ramps) do
         removeRamps(truck)
         if DoesEntityExist(truck) and NetworkHasControlOfEntity(truck) then FreezeEntityPosition(truck, false) end

@@ -75,7 +75,7 @@ return {
                 'prop_mp_ramp_03', 'prop_byard_ramp', 'prop_skate_flatramp', 'imp_prop_flatbed_ramp',
             },
         },
-        winchRange = 12.0,                  -- Max distance from the rear of the bed to a vehicle to hook it.
+        winchRange = 10.0,                  -- Max distance from the ramp foot to the vehicle's bumper.
         pullSpeed = 1.0,                    -- Winch speed in m/s.
         pullTimeout = 40,                   -- Seconds before a stuck pull is finished without physics.
         rope = true,                        -- Draw the winch cable for everyone nearby.

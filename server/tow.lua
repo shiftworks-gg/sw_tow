@@ -88,7 +88,7 @@ lib.callback.register('sw_tow:server:attach', function(src, truckNet, targetNet)
     local allowed, errorKey = classAllowed(src, target)
     if not allowed then return false, errorKey end
 
-    local range = current.method == 'flatbed' and config.flatbed.winchRange + 8.0 or config.hook.range + 6.0
+    local range = current.method == 'flatbed' and config.flatbed.winchRange + 22.0 or config.hook.range + 6.0
     if #(GetEntityCoords(target) - GetEntityCoords(truck)) > range then
         log.warn(src, 'attach', 'target too far from the truck')
         return false

@@ -15,8 +15,8 @@ local function state(entity, key)
     return Entity(entity).state[key]
 end
 
-local function report(ok, errorKey)
-    if not ok then notify(locale(errorKey or 'common.failed'), 'error') end
+local function report(ok, errorKey, ...)
+    if not ok then notify(locale(errorKey or 'common.failed', ...), 'error') end
     return ok
 end
 
@@ -54,17 +54,19 @@ local function hookPoint(target, truck)
 end
 
 ---Runs one truck action at a time and reports a refusal to the player.
----@param fn fun(): boolean?, string?
+---@param fn fun(): boolean?, string?, string?
 local function exclusive(fn)
     if busy then return end
     busy = true
-    local ok, result, errorKey = pcall(fn)
+    flatbed.setBusy(true)
+    local ok, result, errorKey, value = pcall(fn)
     busy = false
+    flatbed.setBusy(false)
     if not ok then
         lib.print.error(result)
         report(false)
     elseif result == false then
-        report(false, errorKey)
+        report(false, errorKey, value)
     end
 end
 
@@ -73,8 +75,8 @@ local function load(truck, target)
         local truckNet, targetNet = VehToNet(truck), VehToNet(target)
         local method = state(truck, 'sw_tow:method')
         if method == 'flatbed' then
-            local inLine, lineError = flatbed.lineUp(truck, target)
-            if not inLine then return false, lineError end
+            local inLine, lineError, value = flatbed.lineUp(truck, target)
+            if not inLine then return false, lineError, value end
         end
         local ok, errorKey = lib.callback.await('sw_tow:server:attach', false, truckNet, targetNet)
         if not ok then return false, errorKey end
@@ -153,9 +155,11 @@ local function canLoad(entity, method)
     local truck = shift.truck()
     if not truck or entity == truck or state(truck, 'sw_tow:method') ~= method or state(truck, 'sw_tow:cargo') then return false end
     if state(entity, 'sw_tow:company') or state(entity, 'sw_tow:towedBy') then return false end
-    if method == 'flatbed' and flatbed.isOnBed(truck, entity) then return false end
-    local range = method == 'flatbed' and cfg.winchRange or config.hook.range
-    return #(GetEntityCoords(entity) - rearOf(truck)) <= range
+    if method == 'flatbed' then
+        -- Shown for anything behind the truck; the line-up check then says exactly what to change.
+        return not flatbed.isOnBed(truck, entity) and #(GetEntityCoords(entity) - rearOf(truck)) <= cfg.winchRange + 12.0
+    end
+    return #(GetEntityCoords(entity) - rearOf(truck)) <= config.hook.range
 end
 
 local function isMyFlatbed(entity)

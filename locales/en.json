@@ -42,9 +42,14 @@
     "secure": "Secure on the bed",
     "truck_moving": "Stop the truck first.",
     "need_truck": "Take a company flatbed first.",
-    "too_close": "Too close: the vehicle must stand behind the orange stop line.",
-    "not_in_line": "Not in line: park the truck straight in front of the vehicle, along the orange line.",
-    "no_ramps": "The ramps could not be placed here."
+    "too_close": "Too close: move the truck forward %s m.",
+    "no_ramps": "The ramps could not be placed here.",
+    "too_far": "Too far: back the truck up %s m.",
+    "off_side": "The vehicle is %s m off to the side: line the truck up behind it.",
+    "off_angle": "The vehicle stands at %s°: at most 45°.",
+    "uneven": "The ground under the ramps is uneven (kerb or pothole): stop on level ground.",
+    "guide_ok": "Ready to load: hook the winch cable.",
+    "not_straight": "The winch could not straighten the vehicle on the ground: line the truck up behind it and try again."
   },
   "calls": {
     "title": "Tow calls",
