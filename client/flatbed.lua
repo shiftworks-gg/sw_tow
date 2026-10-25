@@ -384,7 +384,9 @@ local function drive(pull)
         if #(GetEntityCoords(truck) - truckStart) > 0.25 or math.abs(GetEntityRoll(truck)) > 6.0 then
             return false, 'truck'
         end
-        -- An empty vehicle can keep its brakes on; the winch rolls it, so they stay off every frame.
+        -- An empty vehicle has its brakes applied: pushed against them it only squats and stalls.
+        -- The winch rolls it, so foot brake and handbrake are released every frame.
+        SetVehicleBrake(target, false)
         SetVehicleHandbrake(target, false)
 
         local centre = toTruck(truck, GetEntityCoords(target))

@@ -273,17 +273,23 @@ local function startRope(truck, target)
     local a, b = winchPoint(truck), hookPoint(target, truck)
     local length = #(a - b)
     local rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, length, 4, length + 2.0, 0.5, 0.5, false, false, false, 1.0, false)
-    ---@diagnostic disable-next-line: param-type-mismatch -- nil bone names: attach at the given points
-    AttachEntitiesToRope(rope, truck, target, a.x, a.y, a.z, b.x, b.y, b.z, length, false, false, nil, nil)
     ropes[truck] = rope
     CreateThread(function()
-        -- Runs only while the cable is out: it shortens as the winch pulls.
+        -- Runs only while the cable is out. Its ends are pinned to the winch and the hook every frame
+        -- instead of attaching the rope to the vehicles: an attached rope is a physical constraint and
+        -- would pull on the vehicle the winch is moving.
         while ropes[truck] == rope do
             if not DoesEntityExist(truck) or not DoesEntityExist(target) then
                 removeRope(truck)
                 return
             end
-            RopeForceLength(rope, #(winchPoint(truck) - hookPoint(target, truck)))
+            local w, h = winchPoint(truck), hookPoint(target, truck)
+            local last = GetRopeVertexCount(rope) - 1
+            if last > 0 then
+                PinRopeVertex(rope, 0, w.x, w.y, w.z)
+                PinRopeVertex(rope, last, h.x, h.y, h.z)
+            end
+            RopeForceLength(rope, #(w - h))
             Wait(0)
         end
     end)
