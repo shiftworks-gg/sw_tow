@@ -67,6 +67,7 @@ return {
         bedHeight = 0.55,                   -- Bed surface height, used only if measuring it fails.
         ramp = {
             model = 'imp_prop_flatbed_ramp', -- Ramp object. Try others in game with /swtow_ramps.
+            flip = true,                    -- true when the model's high end is at its back (as this one).
             pair = false,                   -- true: one ramp per wheel track; false: one wide ramp.
             spacing = 1.7,                  -- Distance between the two ramps when pair = true.
             candidates = {                  -- What /swtow_ramps shows when run without a model.

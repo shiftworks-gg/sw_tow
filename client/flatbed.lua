@@ -90,18 +90,23 @@ local function rampGeometry(truck)
     if not found then groundZ = GetEntityCoords(truck).z - GetEntityHeightAboveGround(truck) end
     local rise = math.max(0.05, top.z - groundZ)
     local slope = math.asin(math.min(1.0, rise / diagonal))
-    local pitch = slope - math.atan(dz, dy)
+    -- Work in a frame whose y points at the truck. Ramps modelled with the high end at -y (flip)
+    -- are turned around: their model y runs the other way.
+    local flip = cfg.ramp.flip == true
+    local yHigh, yLow = flip and -min.y or max.y, flip and -max.y or min.y
+    local tilt = slope - math.atan(dz, dy)
 
-    -- Model-space point rotated about the ramp's own x axis.
-    local c, sn = math.cos(pitch), math.sin(pitch)
+    -- A point of that frame after tilting nose-up towards the truck.
+    local c, sn = math.cos(tilt), math.sin(tilt)
     local function turned(y, z) return y * c - z * sn, y * sn + z * c end
     local up = vec3(0.0, 0.0, 1.0)
-    local frontY, frontZ = turned(max.y, max.z)
-    local origin = top - f * frontY - up * frontZ
-    local rearY, rearZ = turned(min.y, min.z)
-    local foot = origin + f * rearY + up * rearZ
+    local highY, highZ = turned(yHigh, max.z)
+    local origin = top - f * highY - up * highZ
+    local lowY, lowZ = turned(yLow, min.z)
+    local foot = origin + f * lowY + up * lowZ
 
-    local rot = vec3(math.deg(pitch), 0.0, GetEntityHeading(truck))
+    local heading = GetEntityHeading(truck) + (flip and 180.0 or 0.0)
+    local rot = vec3(math.deg(flip and -tilt or tilt), 0.0, heading)
     local offsets = cfg.ramp.pair and { -cfg.ramp.spacing / 2, cfg.ramp.spacing / 2 } or { 0.0 }
     local list = {}
     for i = 1, #offsets do
@@ -111,8 +116,8 @@ local function rampGeometry(truck)
         transforms = list,
         angle = math.deg(slope),
         footY = toTruck(truck, foot).y,
-        info = ('size %.2f x %.2f x %.2f, bed %.2f m above ground, slope %.0f°, turned %.0f°'):format(
-            max.x - min.x, dy, dz, rise, math.deg(slope), math.deg(pitch)),
+        info = ('size %.2f x %.2f x %.2f, bed %.2f m above ground, slope %.0f°, tilted %.0f°%s'):format(
+            max.x - min.x, dy, dz, rise, math.deg(slope), math.deg(tilt), flip and ', flipped' or ''),
     }
 end
 
