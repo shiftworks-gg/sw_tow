@@ -238,6 +238,13 @@ RegisterCommand('swtow_ramps', function(_, args)
     flatbed.previewRamps(truck, #args > 0 and args or cfg.ramp.candidates)
 end, false)
 
+-- Winch bench for tuning (debug only): stand behind your flatbed on level ground and run /swtow_bench.
+RegisterCommand('swtow_bench', function()
+    local truck = shift.truck()
+    if not truck then return notify(locale('tow.need_truck'), 'error') end
+    CreateThread(function() flatbed.bench(truck) end)
+end, false)
+
 -- Winch cable, drawn by every client that has the truck streamed in.
 
 ---@type table<integer, integer> truck entity -> rope handle

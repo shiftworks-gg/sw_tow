@@ -77,7 +77,8 @@ return {
         },
         winchRange = 10.0,                  -- Max distance from the ramp foot to the vehicle's bumper.
         pullSpeed = 1.0,                    -- Winch speed in m/s.
-        pullTimeout = 40,                   -- Seconds before a stuck pull is finished without physics.
+        pullTimeout = 40,                   -- Seconds before a winch run gives up.
+        steerWheels = false,                -- Also turn the front wheels visibly while lining up.
         rope = true,                        -- Draw the winch cable for everyone nearby.
     },
 

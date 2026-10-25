@@ -106,7 +106,10 @@ local function rampGeometry(truck, adjust)
     local dy, dz = max.y - min.y, max.z - min.z
     local diagonal = math.sqrt(dy * dy + dz * dz)
     local found, groundZ = GetGroundZFor_3dCoord(top.x - f.x * dy, top.y - f.y * dy, top.z + 0.5, false)
-    if not found then groundZ = GetEntityCoords(truck).z - GetEntityHeightAboveGround(truck) end
+    local truckGround = GetEntityCoords(truck).z - GetEntityHeightAboveGround(truck)
+    -- Ground that is not streamed in yet reads as 0 or far off; the truck's own wheels are a safe
+    -- reference then, since the ramps only go down on level ground.
+    if not found or math.abs(groundZ - truckGround) > 1.5 then groundZ = truckGround end
     local rise = math.max(0.05, top.z - groundZ)
     local slope = math.asin(math.min(1.0, rise / diagonal))
     -- Work in a frame whose y points at the truck. Ramps modelled with the high end at -y (flip)
@@ -300,6 +303,7 @@ end
 ---@field done fun(): boolean
 ---@field speed number
 ---@field gateY number? loading: steer on the ground until the leading end reaches this, then climb
+---@field steerWheels boolean? also turn the front wheels visibly (cfg.steerWheels by default)
 
 ---The end of the vehicle that faces the cab, in the truck's space (y). Loading front or rear first
 ---depends on how the vehicle stands; the winch hooks the end that points at the truck.
@@ -361,6 +365,8 @@ local function drive(pull)
     local base = wheelbase(target)
     local min, max = GetModelDimensions(GetEntityModel(target))
     local steer = 0.0
+    local steerWheels = pull.steerWheels
+    if steerWheels == nil then steerWheels = cfg.steerWheels == true end
 
     local started = GetGameTimer()
     local best, bestAt, boosted = -math.huge, started, false
@@ -426,7 +432,7 @@ local function drive(pull)
         local step = 60.0 * GetFrameTime()
         steer = steer + math.max(-step, math.min(step, wanted - steer))
         -- Front wheels turn the travel direction the other way when reversing.
-        SetVehicleSteeringAngle(target, steer * motion)
+        if steerWheels then SetVehicleSteeringAngle(target, steer * motion) end
 
         local want = along * speed
         SetEntityVelocity(target, v.x + (want.x - v.x) * 0.12, v.y + (want.y - v.y) * 0.12, v.z)
@@ -446,7 +452,7 @@ local function drive(pull)
         Wait(0)
     end
 
-    SetVehicleSteeringAngle(target, 0.0)
+    if steerWheels then SetVehicleSteeringAngle(target, 0.0) end
     SetEntityVelocity(target, 0.0, 0.0, 0.0)
     SetVehicleHandbrake(target, true)
     return true
@@ -642,6 +648,89 @@ function flatbed.unload(truck, target)
     flatbed.setRamps(truck, false)
     holdTruck(truck, false)
     return true
+end
+
+---Development bench: runs the winch on test vehicles behind your flatbed, in a set of standard
+---positions, twice (with and without turning the front wheels), and logs how each run went: whether
+---it climbed, how straight it arrived, how long it took, and whether unloading worked. Only with
+---debug on (setr sw_tow_debug 1). The test vehicles exist only for this run.
+---@param truck integer
+function flatbed.bench(truck)
+    if not flatbed.debug then return print('[sw_tow] bench needs debug: setr sw_tow_debug 1') end
+    local scenarios = {
+        { name = 'straight', x = 0.0, angle = 0.0 },
+        { name = 'side 1.0 m', x = 1.0, angle = 0.0 },
+        { name = 'side -1.5 m, 10 deg', x = -1.5, angle = 10.0 },
+        { name = 'rear first', x = 0.3, angle = 180.0 },
+    }
+    local models = { 'asea', 'zentorno' }
+    local results = {}
+    placeRamps(truck)
+    holdTruck(truck, true)
+    local geometry = rampGeometry(truck)
+    if not geometry or not ramps[truck] then return print('[sw_tow] bench: ramps could not be placed') end
+
+    for _, steerWheels in ipairs({ false, true }) do
+        for _, modelName in ipairs(models) do
+            for _, scenario in ipairs(scenarios) do
+                local model = lib.requestModel(modelName)
+                local min, max = GetModelDimensions(model)
+                local half = (max.y - min.y) / 2
+                local spot = GetOffsetFromEntityInWorldCoords(truck, scenario.x, geometry.footY - 4.5 - half, 0.0)
+                local heading = GetEntityHeading(truck) + scenario.angle
+                local vehicle = CreateVehicle(model, spot.x, spot.y, spot.z + 1.0, heading, true, false)
+                SetModelAsNoLongerNeeded(model)
+                SetVehicleOnGroundProperly(vehicle)
+                Wait(800)
+
+                local label = ('%s · %s · wheels %s'):format(modelName, scenario.name, steerWheels and 'on' or 'off')
+                print('[sw_tow] bench start: ' .. label)
+                local started = GetGameTimer()
+                local loaded, why = drive({
+                    truck = truck,
+                    target = vehicle,
+                    direction = 1,
+                    speed = cfg.pullSpeed,
+                    gateY = geometry.footY - 0.3,
+                    steerWheels = steerWheels,
+                    done = function() return leadingEnd(truck, vehicle) >= cfg.bedFrontY end,
+                })
+                halt(vehicle)
+                local seconds = (GetGameTimer() - started) / 1000
+                local p = toTruck(truck, GetEntityCoords(vehicle))
+                local unloaded = '-'
+                if loaded then
+                    Wait(500)
+                    attachInPlace(truck, vehicle)
+                    Wait(500)
+                    DetachEntity(vehicle, true, true)
+                    halt(vehicle)
+                    Wait(100)
+                    local down, downWhy = drive({
+                        truck = truck,
+                        target = vehicle,
+                        direction = -1,
+                        speed = cfg.pullSpeed,
+                        steerWheels = steerWheels,
+                        done = function() return toTruck(truck, GetEntityCoords(vehicle)).y <= geometry.footY - half - 1.0 end,
+                    })
+                    halt(vehicle)
+                    unloaded = down and 'ok' or tostring(downWhy)
+                end
+                local line = ('%s: load %s in %.1f s, ended at y=%.2f x=%+.2f, unload %s'):format(
+                    label, loaded and 'ok' or tostring(why), seconds, p.y, p.x, unloaded)
+                results[#results + 1] = line
+                print('[sw_tow] bench result: ' .. line)
+                DeleteEntity(vehicle)
+                Wait(500)
+            end
+        end
+    end
+
+    removeRamps(truck)
+    holdTruck(truck, false)
+    print('[sw_tow] bench summary:')
+    for i = 1, #results do print('[sw_tow]   ' .. results[i]) end
 end
 
 ---Development aid: shows ramp candidates behind your truck so the best-looking one can be picked.
