@@ -83,4 +83,9 @@
       render(data.state || {});
     }
   });
+
+  // Tell Lua the page is ready for the init message (GetParentResourceName is provided by FiveM).
+  if (typeof GetParentResourceName === 'function') {
+    fetch(`https://${GetParentResourceName()}/ready`, { method: 'POST', body: '{}' }).catch(() => {});
+  }
 })();

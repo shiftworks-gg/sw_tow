@@ -100,10 +100,11 @@ AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), f
     show(ui.enabled and value == true)
 end)
 
-if ui.enabled then
-    CreateThread(function()
-        Wait(500)  -- Let the NUI page load before the first message.
-        init()
-        show(shift.onShift())
-    end)
-end
+-- The page tells us when it has loaded; messages sent before that would be lost.
+RegisterNUICallback('ready', function(_, respond)
+    respond(true)
+    if not ui.enabled then return end
+    init()
+    visible = false
+    show(shift.onShift())
+end)
