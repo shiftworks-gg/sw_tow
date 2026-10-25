@@ -110,6 +110,12 @@ local function pay(payments, distance, callType)
         storage.logDelivery(payment.citizenid, callType, payment.amount, distance)
         TriggerClientEvent('sw_tow:client:notify', payment.src, locale('impound.paid', util.money(payment.amount)), 'success')
         log.payout(payment.src, 'delivery', ('%s, %d m, %s'):format(callType, math.floor(distance), util.money(payment.amount)))
+        local current = shift.get(payment.src)
+        if current then
+            current.deliveries = current.deliveries + 1
+            current.earned = current.earned + payment.amount
+            TriggerClientEvent('sw_tow:client:shiftStats', payment.src, current.deliveries, current.earned)
+        end
     end
 end
 

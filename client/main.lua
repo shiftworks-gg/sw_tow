@@ -6,6 +6,7 @@ require 'client.tow'
 require 'client.calls'
 require 'client.police'
 require 'client.contracts'
+require 'client.panel'
 
 shift.createOffice()
 impound.createCounters()

@@ -116,5 +116,27 @@
     "no_holds": "Hier ist kein Fahrzeug gesperrt.",
     "until_lifted": "bis zur Aufhebung",
     "lifted": "Sperre aufgehoben."
+  },
+  "panel": {
+    "truck": "Wagen",
+    "cargo": "Ladung",
+    "call": "Auftrag",
+    "distance": "Entfernung",
+    "shift": "Diese Schicht",
+    "deadline": "Abliefern in",
+    "calls": "Abschleppaufträge",
+    "empty": "Leer",
+    "no_call": "Kein Auftrag",
+    "shift_value": "%s Fahrten · %s",
+    "title_idle": "Im Dienst",
+    "title_player": "Anruf",
+    "title_police": "Polizei",
+    "title_contract": "Vertrag",
+    "title_abandoned": "Verlassen",
+    "type_player": "Anruf",
+    "type_police": "Polizei",
+    "type_contract": "Vertrag",
+    "type_abandoned": "Verlassen",
+    "km": "%s km"
   }
 }

@@ -116,5 +116,27 @@
     "no_holds": "No vehicles on hold here.",
     "until_lifted": "until lifted",
     "lifted": "Hold lifted."
+  },
+  "panel": {
+    "truck": "Truck",
+    "cargo": "Cargo",
+    "call": "Call",
+    "distance": "Distance",
+    "shift": "This shift",
+    "deadline": "Deliver within",
+    "calls": "Tow calls",
+    "empty": "Empty",
+    "no_call": "No active call",
+    "shift_value": "%s tows · %s",
+    "title_idle": "On shift",
+    "title_player": "Tow call",
+    "title_police": "Police order",
+    "title_contract": "Contract",
+    "title_abandoned": "Abandoned",
+    "type_player": "Call",
+    "type_police": "Police",
+    "type_contract": "Contract",
+    "type_abandoned": "Abandoned",
+    "km": "%s km"
   }
 }

@@ -11,6 +11,8 @@ local shift = {}
 ---@class SwShift
 ---@field citizenid string
 ---@field startedAt integer
+---@field deliveries integer
+---@field earned integer
 ---@field truck integer? entity
 ---@field method 'flatbed'|'hook'?
 
@@ -82,7 +84,7 @@ lib.callback.register('sw_tow:server:clockIn', function(src)
     local citizenid = framework.getCitizenId(src)
     if not citizenid then return false end
 
-    shifts[src] = { citizenid = citizenid, startedAt = os.time() }
+    shifts[src] = { citizenid = citizenid, startedAt = os.time(), deliveries = 0, earned = 0 }
     framework.setDuty(src, true)
     Player(src).state:set('sw_tow:shift', true, true)
     log.info(src, 'shift_start', framework.getName(src))

@@ -116,5 +116,27 @@
     "no_holds": "Здесь нет арестованных машин.",
     "until_lifted": "до снятия",
     "lifted": "Арест снят."
+  },
+  "panel": {
+    "truck": "Машина",
+    "cargo": "Груз",
+    "call": "Заказ",
+    "distance": "Расстояние",
+    "shift": "За смену",
+    "deadline": "Доставить за",
+    "calls": "Вызовы",
+    "empty": "Пусто",
+    "no_call": "Нет заказа",
+    "shift_value": "рейсы: %s · %s",
+    "title_idle": "На смене",
+    "title_player": "Вызов",
+    "title_police": "Ордер",
+    "title_contract": "Контракт",
+    "title_abandoned": "Брошена",
+    "type_player": "Вызов",
+    "type_police": "Полиция",
+    "type_contract": "Контракт",
+    "type_abandoned": "Брошена",
+    "km": "%s км"
   }
 }

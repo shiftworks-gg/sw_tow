@@ -3,8 +3,16 @@ local config = require 'config'
 local notify = require 'client.notify'
 local shift = require 'client.shift'
 
+local calls = {}
 local routeBlip
 local activeCallId
+---@type { id: integer, type: string, plate: string, coords: vector3, deadline: integer }?
+local activeCall
+
+---The call this worker accepted, for the panel.
+function calls.active()
+    return activeCall
+end
 
 local typeIcons = {
     player = 'phone',
@@ -15,7 +23,7 @@ local typeIcons = {
 
 local function clearRoute()
     if routeBlip and DoesBlipExist(routeBlip) then RemoveBlip(routeBlip) end
-    routeBlip, activeCallId = nil, nil
+    routeBlip, activeCallId, activeCall = nil, nil, nil
 end
 
 local function setRoute(id, coords)
@@ -71,6 +79,13 @@ local function openList()
                 local ok, result = lib.callback.await('sw_tow:server:acceptCall', false, call.id)
                 if ok then
                     setRoute(call.id, result)
+                    activeCall = {
+                        id = call.id,
+                        type = call.type,
+                        plate = call.plate,
+                        coords = vec3(result.x, result.y, result.z),
+                        deadline = GetGameTimer() + config.calls.deliverTimeout * 60000,
+                    }
                     notify(locale('calls.route_set'), 'success')
                 else
                     notify(locale(result or 'common.failed'), 'error')
@@ -102,3 +117,5 @@ end)
 AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)
     if not value then clearRoute() end
 end)
+
+return calls

@@ -11,6 +11,16 @@ return {
         position = 'top-right',  -- ox_lib notification position.
     },
 
+    ui = {                       -- Shift panel shown while on shift. Restyle it here, no code changes needed.
+        enabled = true,          -- false hides the panel; notifications and menus still work.
+        position = 'right',      -- Screen edge: 'right' or 'left'.
+        top = 32,                -- Distance from the top of the screen, in % of its height.
+        scale = 1.0,             -- 0.8 to 1.3. Size of the whole panel.
+        accent = '#ff7a2e',      -- Main colour: timer bar and active marks. Text on it stays dark.
+        label = 'SHIFTWORKS · TOW', -- Small label in the header. Your server name works too.
+        logo = nil,              -- Optional image in the header: a URL or 'nui://your_resource/logo.png'.
+    },
+
     adapters = {                -- Which integration to use. 'auto' picks the first one that is running.
         garage = 'auto',        -- 'qbx_garages' | 'none'. With 'none' owned vehicles cannot be impounded.
         keys = 'auto',          -- 'qbx_vehiclekeys' | 'none'.

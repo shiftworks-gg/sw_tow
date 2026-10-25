@@ -31,6 +31,8 @@ server_scripts {
     'server/main.lua',
 }
 
+ui_page 'html/index.html'
+
 files {
     'config.lua',
     'locales/*.json',
@@ -38,4 +40,8 @@ files {
     'bridge/loader.lua',
     'bridge/**/client.lua',
     'client/*.lua',
+    'html/index.html',
+    'html/style.css',
+    'html/app.js',
+    'html/fonts/*.woff2',
 }

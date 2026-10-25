@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Shiftworks Tow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section class="sw-panel" id="panel" aria-live="polite" hidden>
+    <header class="sw-panel__head">
+      <div class="sw-panel__brand">
+        <img class="sw-panel__logo" id="logo" alt="" hidden>
+        <span class="sw-label" id="label">SHIFTWORKS · TOW</span>
+      </div>
+      <h2 class="sw-panel__title" id="title">On shift</h2>
+    </header>
+
+    <div class="sw-row"><span class="sw-row__muted" data-icon="truck" data-text="truck"></span><span class="sw-num" id="truck">—</span></div>
+    <div class="sw-row"><span class="sw-row__muted" data-icon="package" data-text="cargo"></span><span class="sw-num" id="cargo">—</span></div>
+    <div class="sw-row"><span class="sw-row__muted" data-icon="map-pin" data-text="call"></span><span id="call">—</span></div>
+    <div class="sw-row" id="distanceRow" hidden><span class="sw-row__muted" data-icon="route" data-text="distance"></span><span class="sw-num" id="distance">—</span></div>
+    <div class="sw-row"><span class="sw-row__muted" data-icon="cash" data-text="shift"></span><span class="sw-num" id="shift">—</span></div>
+
+    <div class="sw-timer" id="timer" hidden>
+      <div class="sw-timer__top">
+        <span class="sw-label" data-text="deadline"></span>
+        <span class="sw-timer__time" id="timerTime">00:00</span>
+      </div>
+      <div class="sw-timer__track"><div class="sw-timer__fill" id="timerFill"></div><div class="sw-timer__ticks"></div></div>
+    </div>
+
+    <footer class="sw-panel__foot">
+      <span class="sw-key" id="key">F6</span><span class="sw-row__muted" data-text="calls"></span>
+    </footer>
+  </section>
+  <script src="app.js"></script>
+</body>
+</html>
