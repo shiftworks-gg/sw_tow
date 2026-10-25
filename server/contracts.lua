@@ -6,7 +6,9 @@ local framework = require 'bridge.loader'
 local log = require 'server.log'
 local shift = require 'server.shift'
 local calls = require 'server.calls'
-local spots = require 'data.spots'
+local spotlist = require 'server.spotlist'
+
+local spots = spotlist.all
 
 local cfg = config.contracts
 local busySpots = {}
@@ -43,7 +45,8 @@ local function onAccept(call)
         log.info(nil, 'contract', ('spot %d is blocked'):format(call.spot))
         return false
     end
-    local _, vehicle = framework.spawnVehicle(call.model, vec4(spot.x, spot.y, spot.z, math.random(0, 359) + 0.0), { plate = call.plate })
+    local heading = spotlist.headings[call.spot] or math.random(0, 359) + 0.0
+    local _, vehicle = framework.spawnVehicle(call.model, vec4(spot.x, spot.y, spot.z, heading), { plate = call.plate })
     SetVehicleDoorsLocked(vehicle, 2)
     Entity(vehicle).state:set('sw_tow:contract', call.id, true)
     call.vehicle = vehicle

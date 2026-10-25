@@ -12,7 +12,9 @@ require 'server.calls'
 require 'server.police'
 require 'server.contracts'
 require 'server.abandoned'
+require 'server.devspots'
 local impound = require 'server.impound'
+local spotlist = require 'server.spotlist'
 
 local version = GetResourceMetadata(cache.resource, 'version', 0)
 
@@ -24,5 +26,8 @@ MySQL.ready(function()
         version, framework.name, integrations.names.garage, integrations.names.keys, integrations.names.banking))
     if integrations.names.garage == 'none' then
         lib.print.warn('No supported garage script found: owned vehicles cannot be impounded.')
+    end
+    if spotlist.generatedCount > 0 then
+        lib.print.info(('NPC contracts: %d spots (%d generated).'):format(#spotlist.all, spotlist.generatedCount))
     end
 end)
