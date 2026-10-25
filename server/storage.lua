@@ -13,6 +13,7 @@ local SCHEMA = {
         `reason`      VARCHAR(16)  NOT NULL,
         `note`        VARCHAR(255) NULL,
         `fine`        INT          NOT NULL DEFAULT 0,
+        `tow_charge`  INT          NOT NULL DEFAULT 0,
         `police_hold` TINYINT(1)   NOT NULL DEFAULT 0,
         `hold_until`  DATETIME     NULL,
         `towed_by`    VARCHAR(64)  NULL,
@@ -53,22 +54,23 @@ end
 ---@field reason string
 ---@field note string?
 ---@field fine integer
+---@field tow_charge integer what the worker was paid; the owner pays it back on release
 ---@field police_hold integer
 ---@field hold_until integer? unix seconds
 ---@field stored_at integer unix seconds
 
-local COLUMNS = [[id, yard, plate, vehicle_id, owner, model, reason, note, fine, police_hold,
+local COLUMNS = [[id, yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge, police_hold,
     UNIX_TIMESTAMP(hold_until) AS hold_until, UNIX_TIMESTAMP(stored_at) AS stored_at]]
 
 ---@param record table
 ---@return integer id
 function storage.insertImpound(record)
     return MySQL.insert.await([[
-        INSERT INTO sw_tow_impound (yard, plate, vehicle_id, owner, model, reason, note, fine, police_hold, towed_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sw_tow_impound (yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge, police_hold, towed_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ]], {
         record.yard, record.plate, record.vehicle_id, record.owner, record.model, record.reason,
-        record.note, record.fine or 0, record.police_hold and 1 or 0, record.towed_by,
+        record.note, record.fine or 0, record.tow_charge or 0, record.police_hold and 1 or 0, record.towed_by,
     })
 end
 

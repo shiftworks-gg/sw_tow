@@ -89,11 +89,13 @@ function calls.create(src, message)
     if #(GetEntityCoords(vehicle) - GetEntityCoords(ped)) > config.calls.vehicleRange then return false, 'calls.no_vehicle' end
     if Entity(vehicle).state['sw_tow:company'] then return false, 'calls.no_vehicle' end
 
+    -- Only the owner may call a tow for an owned vehicle, and unowned (NPC) vehicles cannot be called
+    -- in at all: otherwise two players could farm delivery pay with stolen cars.
     local plate = framework.getPlate(vehicle)
-    local vehicleId = integrations.garage.getVehicleId(vehicle, plate)
-    if vehicleId then
-        local owned = integrations.garage.getVehicle(vehicleId)
-        if owned and owned.owner ~= framework.getCitizenId(src) then return false, 'calls.not_owner' end
+    if integrations.names.garage ~= 'none' then
+        local vehicleId = integrations.garage.getVehicleId(vehicle, plate)
+        local owned = vehicleId and integrations.garage.getVehicle(vehicleId)
+        if not owned or owned.owner ~= framework.getCitizenId(src) then return false, 'calls.not_owner' end
     end
 
     nextId = nextId + 1

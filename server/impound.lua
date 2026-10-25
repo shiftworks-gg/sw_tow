@@ -39,7 +39,7 @@ function impound.fee(record, class)
     local hours = (os.time() - record.stored_at) / 3600
     local days = math.ceil(math.max(0, hours - fees.freeHours) / 24)
     local classFee = class and fees.byClass[class] or 0
-    return math.floor(fees.base + classFee + days * fees.perDay + (record.fine or 0))
+    return math.floor(fees.base + classFee + days * fees.perDay + (record.fine or 0) + (record.tow_charge or 0))
 end
 
 ---@param record SwImpoundRecord
@@ -73,24 +73,43 @@ local function counterCoords(yard)
     return (yard.counter or config.office.coords).xyz
 end
 
----Pays the worker, and a partner sitting in the truck, for one delivery.
-local function payWorkers(src, truck, distance, callType)
+---@param distance number meters from pickup to yard
+---@return integer
+local function deliveryPay(distance)
     local p = config.payout
-    local amount = math.min(p.max, math.floor(p.base + p.perKm * distance / 1000))
-    framework.addMoney(src, p.account, amount, 'sw-tow-delivery')
-    storage.logDelivery(shift.get(src).citizenid, callType, amount, distance)
-    TriggerClientEvent('sw_tow:client:notify', src, locale('impound.paid', util.money(amount)), 'success')
-    log.payout(src, 'delivery', ('%s, %d m, %s'):format(callType, math.floor(distance), util.money(amount)))
+    return math.min(p.max, math.floor(p.base + p.perKm * distance / 1000))
+end
 
-    local partnerAmount = math.floor(amount * p.partnerShare)
-    if partnerAmount <= 0 then return end
-    for _, partner in ipairs(guard.occupants(truck)) do
-        local partnerShift = partner ~= src and shift.get(partner)
-        if partnerShift then
-            framework.addMoney(partner, p.account, partnerAmount, 'sw-tow-delivery-partner')
-            storage.logDelivery(partnerShift.citizenid, callType, partnerAmount, distance)
-            TriggerClientEvent('sw_tow:client:notify', partner, locale('impound.paid', util.money(partnerAmount)), 'success')
+---@class SwPayment
+---@field src integer
+---@field citizenid string
+---@field amount integer
+
+---Who gets paid for a delivery: the worker, plus every other worker on shift sitting in the truck.
+---@return SwPayment[] payments, integer total
+local function planPayments(src, truck, amount)
+    local payments = { { src = src, citizenid = shift.get(src).citizenid, amount = amount } }
+    local total = amount
+    local partnerAmount = math.floor(amount * config.payout.partnerShare)
+    if partnerAmount > 0 then
+        for _, partner in ipairs(guard.occupants(truck)) do
+            local partnerShift = partner ~= src and shift.get(partner)
+            if partnerShift then
+                payments[#payments + 1] = { src = partner, citizenid = partnerShift.citizenid, amount = partnerAmount }
+                total = total + partnerAmount
+            end
         end
+    end
+    return payments, total
+end
+
+---@param payments SwPayment[]
+local function pay(payments, distance, callType)
+    for _, payment in ipairs(payments) do
+        framework.addMoney(payment.src, config.payout.account, payment.amount, 'sw-tow-delivery')
+        storage.logDelivery(payment.citizenid, callType, payment.amount, distance)
+        TriggerClientEvent('sw_tow:client:notify', payment.src, locale('impound.paid', util.money(payment.amount)), 'success')
+        log.payout(payment.src, 'delivery', ('%s, %d m, %s'):format(callType, math.floor(distance), util.money(payment.amount)))
     end
 end
 
@@ -119,6 +138,8 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
     local plate = framework.getPlate(target)
     local call = calls.acceptedFor(src, target)
     local vehicleId = integrations.garage.getVehicleId(target, plate)
+    local payments, total = {}, 0
+    if call then payments, total = planPayments(src, truck, deliveryPay(distance)) end
 
     if vehicleId then
         local owned = integrations.garage.getVehicle(vehicleId)
@@ -127,7 +148,9 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
             log.warn(src, 'deliver', ('owned vehicle %s without an order'):format(plate))
             return false, 'impound.no_order'
         end
-        local fee = impound.fee({ stored_at = os.time(), fine = 0 }, framework.getVehicleClass(GetEntityModel(target)))
+        -- The owner pays the tow back on release, so calling a tow on your own car never makes money.
+        local stored = { stored_at = os.time(), fine = 0, tow_charge = total }
+        local fee = impound.fee(stored, framework.getVehicleClass(GetEntityModel(target)))
         if not integrations.garage.store(target, vehicleId, yardKey, fee) then return false, 'common.failed' end
         storage.insertImpound({
             yard = yardKey,
@@ -137,6 +160,7 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
             model = owned.model,
             reason = call.type,
             note = call.message,
+            tow_charge = total,
             towed_by = current.citizenid,
         })
         held[vehicleId] = yardKey
@@ -147,7 +171,7 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
 
     if call then
         calls.complete(call.id)
-        payWorkers(src, truck, distance, call.type)
+        pay(payments, distance, call.type)
     else
         -- Unowned vehicle without an order: cleared off the street, no pay (stops farming parked cars).
         TriggerClientEvent('sw_tow:client:notify', src, locale('impound.cleared'), 'inform')
