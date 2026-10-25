@@ -1,0 +1,90 @@
+{
+  "notify": {
+    "success": "Done",
+    "inform": "Towing",
+    "warning": "Warning",
+    "error": "Not possible"
+  },
+  "common": {
+    "failed": "Something went wrong. Try again."
+  },
+  "shift": {
+    "clock_in": "Clock in",
+    "clock_out": "Clock out",
+    "started": "Shift started. Take a truck at the counter.",
+    "ended": "Shift ended.",
+    "wrong_job": "Only tow company employees can clock in here."
+  },
+  "garage": {
+    "title": "Company trucks",
+    "take": "Take a truck",
+    "return": "Return the truck",
+    "taken": "%s is waiting outside.",
+    "returned": "Truck returned.",
+    "flatbed_hint": "Winch, carries one vehicle on the bed",
+    "hook_hint": "Tow arm, tows one vehicle behind",
+    "already_out": "You already have a truck out.",
+    "spot_busy": "The truck spot is blocked. Clear it first.",
+    "too_far": "Bring the truck back to the yard first.",
+    "has_cargo": "Unload the vehicle first."
+  },
+  "tow": {
+    "winch": "Hook the winch cable",
+    "hook": "Hook to the tow arm",
+    "unload": "Unload the vehicle",
+    "deliver": "Hand over to the impound",
+    "already_loaded": "The truck is already loaded.",
+    "not_towable": "This vehicle cannot be towed.",
+    "occupied": "Someone is inside the vehicle.",
+    "no_control": "The vehicle did not respond. Try again."
+  },
+  "calls": {
+    "title": "Tow calls",
+    "keybind": "Tow calls",
+    "command_help": "Call a tow truck for the vehicle you are in or drove last",
+    "message_help": "Short note for the driver",
+    "cancel_help": "Cancel your tow call",
+    "created": "Tow truck called. You will get a message when a driver accepts.",
+    "cancelled": "Tow call cancelled.",
+    "none_open": "You have no open tow call.",
+    "cooldown": "Wait a minute before calling again.",
+    "already_open": "You already have an open tow call.",
+    "busy": "All tow drivers are busy. Try again later.",
+    "no_vehicle": "Stand next to your vehicle to call a tow truck.",
+    "not_owner": "Only the owner can call a tow truck for this vehicle.",
+    "new": "New tow call: %s",
+    "accepted": "%s is on the way.",
+    "reopened": "Your driver dropped the call. It is open again.",
+    "completed": "Your vehicle is at the impound yard.",
+    "expired": "Your tow call expired.",
+    "vehicle_gone": "Your tow call closed: the vehicle is gone.",
+    "taken": "Another driver took this call.",
+    "one_at_a_time": "Finish your current call first.",
+    "empty": "No open calls.",
+    "line": "%s · %s km · %s min ago",
+    "yours": "yours, select to drop",
+    "dropped": "Call dropped.",
+    "route_set": "Route set.",
+    "blip": "Tow call"
+  },
+  "impound": {
+    "counter": "Impound counter",
+    "nothing_here": "None of your vehicles are here.",
+    "on_hold": "Police hold",
+    "fee_line": "Release fee %s",
+    "release_header": "Release %s",
+    "release_confirm": "Pay %s and take the vehicle. Cash is used first, then bank.",
+    "release_button": "Pay %s",
+    "released": "Your vehicle is waiting at the exit.",
+    "not_enough": "Not enough money.",
+    "no_spot": "The exit is blocked. Try again in a moment.",
+    "police_hold": "This vehicle is on a police hold.",
+    "held_elsewhere": "This vehicle is held at %s.",
+    "paid": "Delivery paid: %s",
+    "cleared": "Vehicle cleared. No order, no pay.",
+    "not_in_yard": "Drive into the impound yard first.",
+    "no_cargo": "Nothing is loaded on the truck.",
+    "too_fast": "Delivery refused: the trip was too fast.",
+    "no_order": "This vehicle has an owner and no tow order."
+  }
+}

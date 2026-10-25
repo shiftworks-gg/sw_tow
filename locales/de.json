@@ -1,0 +1,90 @@
+{
+  "notify": {
+    "success": "Erledigt",
+    "inform": "Abschleppdienst",
+    "warning": "Achtung",
+    "error": "Nicht möglich"
+  },
+  "common": {
+    "failed": "Etwas ist schiefgelaufen. Versuch es noch einmal."
+  },
+  "shift": {
+    "clock_in": "Schicht beginnen",
+    "clock_out": "Schicht beenden",
+    "started": "Schicht begonnen. Hol dir einen Wagen am Schalter.",
+    "ended": "Schicht beendet.",
+    "wrong_job": "Nur Mitarbeiter des Abschleppdienstes können hier einstempeln."
+  },
+  "garage": {
+    "title": "Firmenwagen",
+    "take": "Wagen nehmen",
+    "return": "Wagen zurückgeben",
+    "taken": "%s steht draußen bereit.",
+    "returned": "Wagen zurückgegeben.",
+    "flatbed_hint": "Seilwinde, ein Fahrzeug auf der Ladefläche",
+    "hook_hint": "Abschleppkran, zieht ein Fahrzeug hinterher",
+    "already_out": "Du hast schon einen Wagen draußen.",
+    "spot_busy": "Der Stellplatz ist blockiert. Mach ihn zuerst frei.",
+    "too_far": "Bring den Wagen zuerst zurück auf den Hof.",
+    "has_cargo": "Lade zuerst das Fahrzeug ab."
+  },
+  "tow": {
+    "winch": "Windenseil einhaken",
+    "hook": "Am Kran einhaken",
+    "unload": "Fahrzeug abladen",
+    "deliver": "An den Verwahrplatz übergeben",
+    "already_loaded": "Der Wagen ist schon beladen.",
+    "not_towable": "Dieses Fahrzeug kann nicht abgeschleppt werden.",
+    "occupied": "Im Fahrzeug sitzt jemand.",
+    "no_control": "Das Fahrzeug reagiert nicht. Versuch es noch einmal."
+  },
+  "calls": {
+    "title": "Abschleppaufträge",
+    "keybind": "Abschleppaufträge",
+    "command_help": "Abschleppwagen für dein aktuelles oder zuletzt gefahrenes Fahrzeug rufen",
+    "message_help": "Kurze Notiz für den Fahrer",
+    "cancel_help": "Deinen Abschleppauftrag abbrechen",
+    "created": "Abschleppwagen gerufen. Du bekommst eine Nachricht, sobald ein Fahrer annimmt.",
+    "cancelled": "Abschleppauftrag abgebrochen.",
+    "none_open": "Du hast keinen offenen Abschleppauftrag.",
+    "cooldown": "Warte eine Minute, bevor du erneut anrufst.",
+    "already_open": "Du hast bereits einen offenen Abschleppauftrag.",
+    "busy": "Alle Fahrer sind beschäftigt. Versuch es später noch einmal.",
+    "no_vehicle": "Stell dich neben dein Fahrzeug, um einen Abschleppwagen zu rufen.",
+    "not_owner": "Nur der Besitzer kann für dieses Fahrzeug einen Abschleppwagen rufen.",
+    "new": "Neuer Abschleppauftrag: %s",
+    "accepted": "%s ist unterwegs.",
+    "reopened": "Dein Fahrer hat den Auftrag abgegeben. Er ist wieder offen.",
+    "completed": "Dein Fahrzeug steht auf dem Verwahrplatz.",
+    "expired": "Dein Abschleppauftrag ist abgelaufen.",
+    "vehicle_gone": "Dein Abschleppauftrag wurde geschlossen: Das Fahrzeug ist weg.",
+    "taken": "Ein anderer Fahrer hat den Auftrag übernommen.",
+    "one_at_a_time": "Schließ zuerst deinen aktuellen Auftrag ab.",
+    "empty": "Keine offenen Aufträge.",
+    "line": "%s · %s km · vor %s Min.",
+    "yours": "deiner, auswählen zum Abgeben",
+    "dropped": "Auftrag abgegeben.",
+    "route_set": "Route gesetzt.",
+    "blip": "Abschleppauftrag"
+  },
+  "impound": {
+    "counter": "Schalter Verwahrplatz",
+    "nothing_here": "Keines deiner Fahrzeuge steht hier.",
+    "on_hold": "Polizeiliche Sperre",
+    "fee_line": "Auslösegebühr %s",
+    "release_header": "%s auslösen",
+    "release_confirm": "%s zahlen und das Fahrzeug mitnehmen. Zuerst Bargeld, dann Bank.",
+    "release_button": "%s zahlen",
+    "released": "Dein Fahrzeug wartet an der Ausfahrt.",
+    "not_enough": "Nicht genug Geld.",
+    "no_spot": "Die Ausfahrt ist blockiert. Versuch es gleich noch einmal.",
+    "police_hold": "Dieses Fahrzeug ist polizeilich gesperrt.",
+    "held_elsewhere": "Dieses Fahrzeug steht bei %s.",
+    "paid": "Auftrag bezahlt: %s",
+    "cleared": "Fahrzeug entfernt. Kein Auftrag, keine Bezahlung.",
+    "not_in_yard": "Fahr zuerst auf den Verwahrplatz.",
+    "no_cargo": "Auf dem Wagen ist nichts geladen.",
+    "too_fast": "Übergabe abgelehnt: Die Fahrt war zu schnell.",
+    "no_order": "Dieses Fahrzeug hat einen Besitzer und keinen Abschleppauftrag."
+  }
+}
