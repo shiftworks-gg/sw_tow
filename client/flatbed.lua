@@ -414,7 +414,7 @@ local function drive(pull)
         if progress > best + 0.1 then
             best, bestAt = progress, now
         elseif now - bestAt > 1500 then
-            if boosted or pull.direction < 0 then return false, 'stuck' end
+            if boosted or pull.direction < 0 then return false, onGround and 'blocked' or 'stuck' end
             boosted, bestAt = true, now
         end
 
@@ -574,7 +574,7 @@ function flatbed.load(truck, target)
         holdTruck(truck, false)
         return false, 'tow.no_control'
     end
-    if why ~= 'misaligned' and why ~= 'truck' then
+    if why ~= 'misaligned' and why ~= 'truck' and why ~= 'blocked' then
         -- Part-way up: let it roll back down to the ground the way it came.
         drive({
             truck = truck,
@@ -586,6 +586,7 @@ function flatbed.load(truck, target)
         halt(target)
     end
     holdTruck(truck, false)
+    if why == 'blocked' then return false, 'tow.path_blocked' end
     return false, why == 'misaligned' and 'tow.not_straight' or 'tow.cannot_climb'
 end
 

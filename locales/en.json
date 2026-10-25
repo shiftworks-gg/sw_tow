@@ -51,7 +51,8 @@
     "guide_ok": "Ready to load: hook the winch cable.",
     "not_straight": "The winch could not straighten the vehicle on the ground: line the truck up behind it and try again.",
     "cannot_climb": "The vehicle could not make it up the ramps and was let back down.",
-    "cannot_unload": "The vehicle did not come down and is strapped on the bed again. Try again."
+    "cannot_unload": "The vehicle did not come down and is strapped on the bed again. Try again.",
+    "path_blocked": "Something is in the way to the ramps. Clear the path and try again."
   },
   "calls": {
     "title": "Tow calls",

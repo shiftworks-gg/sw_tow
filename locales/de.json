@@ -51,7 +51,8 @@
     "guide_ok": "Bereit zum Laden: Häng das Windenseil ein.",
     "not_straight": "Die Winde konnte das Fahrzeug am Boden nicht ausrichten: Stell den Wagen in Linie davor und versuch es erneut.",
     "cannot_climb": "Das Fahrzeug kam die Rampen nicht hoch und wurde wieder heruntergelassen.",
-    "cannot_unload": "Das Fahrzeug kam nicht herunter und ist wieder auf der Ladefläche gesichert. Versuch es erneut."
+    "cannot_unload": "Das Fahrzeug kam nicht herunter und ist wieder auf der Ladefläche gesichert. Versuch es erneut.",
+    "path_blocked": "Etwas versperrt den Weg zu den Rampen. Mach den Weg frei und versuch es erneut."
   },
   "calls": {
     "title": "Abschleppaufträge",

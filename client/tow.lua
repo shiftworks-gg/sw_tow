@@ -267,49 +267,66 @@ local function loadRopeTextures()
     return true
 end
 
-local function startRope(truck, target)
+---@type table<integer, integer> truck entity -> winch target this client is watching
+local watching = {}
+
+---Runs on every client near a truck while its winch moves a vehicle (state bag phase pulling or
+---lowering): draws the cable, and lets this client's player pass through the moving vehicle, so
+---nobody can block a loading by standing in the way and nobody is pushed over by it.
+---@param truck integer
+---@param target integer
+local function watchWinch(truck, target)
+    if watching[truck] == target then return end
+    watching[truck] = target
     removeRope(truck)
-    if not loadRopeTextures() then return end
-    local a, b = winchPoint(truck), hookPoint(target, truck)
-    local length = #(a - b)
-    local rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, length, 4, length + 2.0, 0.5, 0.5, false, false, false, 1.0, false)
-    ropes[truck] = rope
+    local rope
+    if cfg.rope and loadRopeTextures() then
+        local a, b = winchPoint(truck), hookPoint(target, truck)
+        local length = #(a - b)
+        -- Taut from the start (no slack to sag through the road), free to shorten as fast as the
+        -- vehicle comes in, and long enough to pay out when it is let down.
+        rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
+            false, false, false, 1.0, false)
+        ropes[truck] = rope
+    end
     CreateThread(function()
-        -- Runs only while the cable is out. Its ends are pinned to the winch and the hook every frame
-        -- instead of attaching the rope to the vehicles: an attached rope is a physical constraint and
-        -- would pull on the vehicle the winch is moving.
-        while ropes[truck] == rope do
-            if not DoesEntityExist(truck) or not DoesEntityExist(target) then
-                removeRope(truck)
-                return
+        while watching[truck] == target do
+            if not DoesEntityExist(truck) or not DoesEntityExist(target) then break end
+            SetEntityNoCollisionEntity(target, cache.ped, true)
+            if rope then
+                -- The ends are pinned each frame instead of attaching the rope to the vehicles: an
+                -- attached rope is a physical constraint and would pull on the vehicle.
+                local w, h = winchPoint(truck), hookPoint(target, truck)
+                local last = GetRopeVertexCount(rope) - 1
+                if last > 0 then
+                    PinRopeVertex(rope, 0, w.x, w.y, w.z)
+                    PinRopeVertex(rope, last, h.x, h.y, h.z)
+                end
+                RopeForceLength(rope, #(w - h))
             end
-            local w, h = winchPoint(truck), hookPoint(target, truck)
-            local last = GetRopeVertexCount(rope) - 1
-            if last > 0 then
-                PinRopeVertex(rope, 0, w.x, w.y, w.z)
-                PinRopeVertex(rope, last, h.x, h.y, h.z)
-            end
-            RopeForceLength(rope, #(w - h))
             Wait(0)
         end
+        if watching[truck] == target then watching[truck] = nil end
+        if ropes[truck] == rope then removeRope(truck) end
     end)
 end
 
 AddStateBagChangeHandler('sw_tow:winch', '', function(bagName, _, value)
-    if not cfg.rope then return end
     CreateThread(function()
         local truck = util.entityFromBag(bagName, 1000)
         if not truck then return end
         if type(value) ~= 'table' or (value.phase ~= 'pulling' and value.phase ~= 'lowering') then
+            watching[truck] = nil
             removeRope(truck)
             return
         end
         local target = NetworkDoesEntityExistWithNetworkId(value.target) and NetToVeh(value.target) or 0
-        if target ~= 0 then startRope(truck, target) end
+        if target ~= 0 then watchWinch(truck, target) end
     end)
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= cache.resource then return end
+    watching = {}
     for truck in pairs(ropes) do removeRope(truck) end
 end)
