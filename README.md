@@ -14,6 +14,7 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 - **Impound yard.** Owned vehicles are stored with a fee: base + vehicle class + days in storage + police fine + the tow itself. Owners pay at the counter and drive off with their keys.
 - **Works with your garages.** The public Qbox impound lot cannot hand out a vehicle that is held in the yard. Nothing in `qbx_garages` is edited.
 - **Server decides.** Every action is checked on the server: shift, truck, distance, rate and trip time. Refused actions are logged, never punished.
+- **Leaves service vehicles alone.** Emergency and military vehicles are towed only on an accepted call and never flagged as abandoned.
 - **Partner pay.** A second worker in the truck gets 50% of the delivery pay on top.
 
 ## Requirements
@@ -23,7 +24,7 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 | Server | FXServer with OneSync |
 | Framework | Qbox (`qbx_core` 1.19 or newer); QBCore (`qb-core`, experimental, with `qb-garages`, `qb-vehiclekeys`, `qb-banking`) |
 | Libraries | `ox_lib` 3.30+, `ox_target` 1.17+, `oxmysql` 2.10+ |
-| Optional | `qbx_garages` + `qbx_vehicles` (impound of owned vehicles), `qbx_vehiclekeys`, `Renewed-Banking` (company and police accounts) |
+| Optional | `qbx_garages` + `qbx_vehicles` (impound of owned vehicles and player calls), `qbx_vehiclekeys`, `Renewed-Banking` (company and police accounts) |
 
 ## Install in 5 steps
 
@@ -92,7 +93,7 @@ State bags other scripts can read:
 
 - **"no supported framework is running".** Start your framework before `sw_tow` in `server.cfg`.
 - **Owned vehicles are refused at the yard ("no tow order").** Owned vehicles need an accepted call, a police order or an abandoned-vehicle call. This stops workers from impounding parked cars.
-- **"No supported garage script found" in the console.** Without `qbx_garages` owned vehicles cannot be impounded; NPC contracts still work.
+- **"No supported garage script found" in the console.** Without a supported garage script owned vehicles cannot be impounded and `/calltow` is off, because ownership cannot be checked. Police orders, NPC contracts and abandoned vehicles still work.
 - **Two tow offices at the same spot.** Stop `qbx_towjob`.
 
 ## Performance
