@@ -46,7 +46,7 @@
     "no_ramps": "The ramps could not be placed here.",
     "too_far": "Too far: back the truck up %s m.",
     "off_side": "The vehicle is %s m off to the side: line the truck up behind it.",
-    "off_angle": "The vehicle stands at %s°: at most 45°.",
+    "off_angle": "The vehicle stands at %s°: at most 35°.",
     "uneven": "The ground under the ramps is uneven (kerb or pothole): stop on level ground.",
     "guide_ok": "Ready to load: hook the winch cable.",
     "not_straight": "The winch could not straighten the vehicle on the ground: line the truck up behind it and try again.",

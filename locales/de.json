@@ -46,7 +46,7 @@
     "no_ramps": "Die Rampen können hier nicht aufgestellt werden.",
     "too_far": "Zu weit: Setz den Wagen %s m zurück.",
     "off_side": "Das Fahrzeug steht %s m seitlich: Stell den Wagen in Linie davor.",
-    "off_angle": "Das Fahrzeug steht im Winkel von %s°: höchstens 45°.",
+    "off_angle": "Das Fahrzeug steht im Winkel von %s°: höchstens 35°.",
     "uneven": "Der Boden unter den Rampen ist uneben (Bordstein oder Schlagloch): Stell dich auf ebenen Boden.",
     "guide_ok": "Bereit zum Laden: Häng das Windenseil ein.",
     "not_straight": "Die Winde konnte das Fahrzeug am Boden nicht ausrichten: Stell den Wagen in Linie davor und versuch es erneut.",

@@ -299,7 +299,7 @@ end
 ---@field direction 1|-1 1 = towards the cab (loading), -1 = down the ramps (unloading)
 ---@field done fun(): boolean
 ---@field speed number
----@field gateY number? loading: the leading end waits here until the vehicle is straight and centred
+---@field gateY number? loading: steer on the ground until the leading end reaches this, then climb
 
 ---The end of the vehicle that faces the cab, in the truck's space (y). Loading front or rear first
 ---depends on how the vehicle stands; the winch hooks the end that points at the truck.
@@ -315,8 +315,38 @@ local function leadingEnd(truck, target)
     return toTruck(truck, tip).y, max.y - min.y, facing
 end
 
----Moves the vehicle along the truck at winch speed until `done`. Only horizontal velocity is set:
----gravity, wheel contact, suspension and the bend at the top of the ramp stay with the physics.
+---How far sideways a vehicle can still line itself up over `gap` metres of ground, steering in a
+---gentle S-curve (turning radius TURN_RADIUS): about gap² / (4 r), plus a little the ramp takes.
+local TURN_RADIUS = 8.0
+
+---@param gap number metres between the vehicle's leading end and the ramp foot
+---@return number
+local function sideAllowance(gap)
+    gap = math.max(0.0, gap)
+    return math.min(3.0, 0.25 + gap * gap / (4.0 * TURN_RADIUS))
+end
+
+---Distance between the front and rear axles, from the wheel bones.
+---@param vehicle integer
+---@return number
+local function wheelbase(vehicle)
+    local front, rear = GetEntityBoneIndexByName(vehicle, 'wheel_lf'), GetEntityBoneIndexByName(vehicle, 'wheel_lr')
+    if front == -1 or rear == -1 then return 2.6 end
+    local d = #(GetWorldPositionOfEntityBone(vehicle, front) - GetWorldPositionOfEntityBone(vehicle, rear))
+    return d > 1.0 and d or 2.6
+end
+
+---@param a number degrees
+---@return number degrees in -180..180
+local function wrap(a)
+    return ((a + 180.0) % 360.0) - 180.0
+end
+
+---Moves the vehicle with the winch until `done`.
+---On the ground it rolls along its own body while its front wheels are steered the way a driver
+---would (Stanley controller: heading error plus offset of the leading axle), and the body turns as
+---the steered wheels dictate. Nothing slides sideways. Rear-first it reverses and the steering works
+---the other way. On the ramps and the bed the wheels stay straight and physics does the rest.
 ---@param pull SwPull
 ---@return boolean ok, string? why 'stuck'|'unstable'|'gone'|'timeout'|'misaligned'|'truck'
 local function drive(pull)
@@ -324,14 +354,16 @@ local function drive(pull)
     local truckStart = GetEntityCoords(truck)
     local lastLog = 0
     SetVehicleHandbrake(target, false)
-    SetVehicleBrake(target, false)
     SetVehicleEngineOn(target, false, true, true)
     local _, _, facing = leadingEnd(truck, target)
-    local targetHeading = GetEntityHeading(truck) + (facing and 0.0 or 180.0)
+    -- +1: the vehicle moves along its nose; -1: it moves backwards.
+    local motion = (facing and 1 or -1) * pull.direction
+    local base = wheelbase(target)
+    local min, max = GetModelDimensions(GetEntityModel(target))
+    local steer = 0.0
 
     local started = GetGameTimer()
     local best, bestAt, boosted = -math.huge, started, false
-    local heldSince
     while true do
         if not DoesEntityExist(truck) or not DoesEntityExist(target) then return false, 'gone' end
         if not NetworkHasControlOfEntity(target) then requestControl(target, 500) end
@@ -346,30 +378,31 @@ local function drive(pull)
         if #(GetEntityCoords(truck) - truckStart) > 0.25 or math.abs(GetEntityRoll(truck)) > 6.0 then
             return false, 'truck'
         end
+        -- An empty vehicle can keep its brakes on; the winch rolls it, so they stay off every frame.
+        SetVehicleHandbrake(target, false)
 
-        local local_ = toTruck(truck, GetEntityCoords(target))
-        local err = ((targetHeading - GetEntityHeading(target) + 180.0) % 360.0) - 180.0
+        local centre = toTruck(truck, GetEntityCoords(target))
+        -- Travel heading error against the truck's axis (towards the cab when loading).
+        local travelHeading = GetEntityHeading(target) + (motion > 0 and 0.0 or 180.0)
+        local pathHeading = GetEntityHeading(truck) + (pull.direction > 0 and 0.0 or 180.0)
+        local headingError = wrap(pathHeading - travelHeading)
+        -- Offset of the axle that leads in the direction of travel.
+        local axle = GetOffsetFromEntityInWorldCoords(target, 0.0, motion > 0 and max.y - 1.0 or min.y + 1.0, 0.0)
+        local offset = toTruck(truck, axle).x * pull.direction
 
-        -- At the foot of the ramps the vehicle must be straight and centred before it climbs, or
-        -- one side would go up first. Until then it only turns and slides onto the line.
-        local hold = false
-        if pull.gateY then
+        local onGround = pull.direction > 0 and pull.gateY ~= nil
+        if onGround then
             local lead = leadingEnd(truck, target)
             if lead >= pull.gateY then
-                if math.abs(local_.x) <= 0.3 and math.abs(err) <= 5.0 then
-                    pull.gateY, heldSince = nil, nil
-                else
-                    hold = true
-                    heldSince = heldSince or now
-                    if now - heldSince > 6000 then return false, 'misaligned' end
-                end
+                -- At the ramp foot: it climbs only if it is straight and centred.
+                if math.abs(centre.x) > 0.3 or math.abs(headingError) > 4.0 then return false, 'misaligned' end
+                pull.gateY, onGround = nil, false
             end
         end
 
         -- Progress along the truck. Loading gets one stronger pull over a bump; anything else that
         -- stops moving for 1.5 s is stuck, and the winch stops before tyres burn or things break.
-        local progress = local_.y * pull.direction
-        if hold then bestAt = now end
+        local progress = centre.y * pull.direction
         if progress > best + 0.1 then
             best, bestAt = progress, now
         elseif now - bestAt > 1500 then
@@ -377,47 +410,43 @@ local function drive(pull)
             boosted, bestAt = true, now
         end
 
-        -- An empty vehicle can keep its brakes on; the winch rolls it, so they stay off every frame.
-        SetVehicleHandbrake(target, false)
-
-        local f, right = axes(truck)
         local speed = pull.speed * (boosted and 1.6 or 1.0)
-        -- Only on the ground, before the climb, is the body steered (turned and moved onto the
-        -- centre line). On the ramps the winch only sets the speed along the truck and physics does
-        -- the rest: overriding rotation there makes the vehicle shake.
-        local onGround = pull.direction > 0 and pull.gateY ~= nil
-        local want
-        if hold then
-            -- Slide sideways onto the centre line, no forward motion.
-            want = right * math.max(-0.5, math.min(0.5, -local_.x * 1.5))
-        elseif onGround then
-            -- Steer back onto the truck's centre line: aim 3 m ahead on it.
-            want = norm(f + right * (-local_.x / 3.0)) * speed
-        else
-            -- On the ramps or the bed: straight along the truck, the slightest centring only.
-            want = norm(f * pull.direction + right * math.max(-0.05, math.min(0.05, -local_.x * 0.1))) * speed
-        end
         local v = GetEntityVelocity(target)
-        SetEntityVelocity(target, v.x + (want.x - v.x) * 0.12, v.y + (want.y - v.y) * 0.12, v.z)
+        local along = norm(GetOffsetFromEntityInWorldCoords(target, 0.0, 1.0, 0.0) - GetEntityCoords(target))
+        along = norm(vec3(along.x, along.y, 0.0)) * motion
 
+        -- Steering angle for the direction of travel (positive turns the travel direction left).
+        local wanted = 0.0
+        if onGround then
+            -- Right of the axis (offset > 0) means turn left (positive), and harder at low speed.
+            local cross = math.deg(math.atan(1.2 * offset, math.max(0.5, GetEntitySpeed(target))))
+            wanted = math.max(-30.0, math.min(30.0, headingError + cross))
+        end
+        -- Like hands on a wheel: at most 60° per second.
+        local step = 60.0 * GetFrameTime()
+        steer = steer + math.max(-step, math.min(step, wanted - steer))
+        -- Front wheels turn the travel direction the other way when reversing.
+        SetVehicleSteeringAngle(target, steer * motion)
+
+        local want = along * speed
+        SetEntityVelocity(target, v.x + (want.x - v.x) * 0.12, v.y + (want.y - v.y) * 0.12, v.z)
         local yaw = 0.0
         if onGround then
-            -- On flat ground there is no pitch or roll to keep, so only the turn is set.
-            yaw = math.max(-0.4, math.min(0.4, math.rad(err) * 1.2))
+            -- The body turns as the steered wheels dictate: yaw rate = v · tan(steer) / wheelbase.
+            yaw = GetEntitySpeed(target) * math.tan(math.rad(steer)) / base
             SetEntityAngularVelocity(target, 0.0, 0.0, yaw)
         end
-        local av = GetEntityRotationVelocity(target)
 
         if flatbed.debug and now - lastLog >= 250 then
             lastLog = now
-            print(('[sw_tow] pull t=%.1f y=%.2f x=%+.2f heading err=%+.1f yaw=%+.2f av.z=%+.2f speed=%.2f pitch=%.1f roll=%.1f%s%s'):format(
-                (now - started) / 1000, local_.y, local_.x, err, yaw, av.z, GetEntitySpeed(target),
-                GetEntityPitch(target), GetEntityRoll(target), hold and ' HOLD' or (onGround and ' GROUND' or ''),
-                boosted and ' BOOST' or ''))
+            print(('[sw_tow] pull t=%.1f y=%.2f x=%+.2f axle=%+.2f heading err=%+.1f steer=%+.1f yaw=%+.2f speed=%.2f pitch=%.1f roll=%.1f%s%s'):format(
+                (now - started) / 1000, centre.y, centre.x, offset, headingError, steer, yaw, GetEntitySpeed(target),
+                GetEntityPitch(target), GetEntityRoll(target), onGround and ' GROUND' or '', boosted and ' BOOST' or ''))
         end
         Wait(0)
     end
 
+    SetVehicleSteeringAngle(target, 0.0)
     SetEntityVelocity(target, 0.0, 0.0, 0.0)
     SetVehicleHandbrake(target, true)
     return true
@@ -426,6 +455,7 @@ end
 ---Stops the vehicle where it is, with no motion left in it.
 local function halt(target)
     if not DoesEntityExist(target) then return end
+    SetVehicleSteeringAngle(target, 0.0)
     SetEntityVelocity(target, 0.0, 0.0, 0.0)
     SetEntityAngularVelocity(target, 0.0, 0.0, 0.0)
     SetVehicleHandbrake(target, true)
@@ -464,10 +494,10 @@ function flatbed.assess(truck, target, geometry)
     local centre = toTruck(truck, GetEntityCoords(target))
     local heading = GetEntityHeading(truck) + (facing and 0.0 or 180.0)
     local angle = math.abs(((heading - GetEntityHeading(target) + 180.0) % 360.0) - 180.0)
-    local sideLimit = math.min(3.0, 0.5 + math.max(0.0, gap) * 0.35)
+    local sideLimit = sideAllowance(gap)
 
     local result = { ok = false, geometry = geometry }
-    if angle > 45.0 then
+    if angle > 35.0 then
         result.key, result.value = 'tow.off_angle', angle
     elseif gap < 0.3 then
         result.key, result.value = 'tow.too_close', 0.3 - gap
@@ -679,7 +709,7 @@ local function zoneStrips(truck, geometry)
     local strips, steps = {}, 5
     for i = 0, steps - 1 do
         local g0, g1 = 0.3 + (cfg.winchRange - 0.3) * i / steps, 0.3 + (cfg.winchRange - 0.3) * (i + 1) / steps
-        local w0, w1 = math.min(3.0, 0.5 + g0 * 0.35) + 1.0, math.min(3.0, 0.5 + g1 * 0.35) + 1.0
+        local w0, w1 = sideAllowance(g0) + 1.0, sideAllowance(g1) + 1.0
         local y0, y1 = geometry.footY - g0, geometry.footY - g1
         strips[#strips + 1] = { at(-w0, y0), at(w0, y0), at(w1, y1), at(-w1, y1) }
     end
