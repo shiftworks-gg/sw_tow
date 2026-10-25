@@ -8,6 +8,6 @@
 - Impound yard with release fee, police holds and a counter for owners and officers.
 - Protection for the public Qbox impound lot through a `qbx_garages` hook.
 - Shift panel in the Shiftworks style, restyled from `config.ui`.
-- QBCore bridge (experimental): `qb-core`, `qb-garages`, `qb-vehiclekeys`. Impound fees use the base rate there, since qb-core has no server-side vehicle class.
+- QBCore bridge (experimental): `qb-core`, `qb-garages`, `qb-vehiclekeys`, `qb-banking`. Impounded vehicles stay off the qb-garages depot list. Impound fees use the base rate there, since qb-core has no server-side vehicle class.
 - `/swtow_spots`: admin tool that finds roadside spots for NPC contracts across the map and shows them as blips.
 - Languages: English, German, Russian.

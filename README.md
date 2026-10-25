@@ -4,7 +4,7 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 
 `Qbox` · `Open config` · `EN / DE / RU`
 
-> Status: 0.1.0, in development. QBCore support is written but untested; ESX is planned and stops with a clear message.
+> Status: 0.1.0, in development. QBCore support is experimental: it passes a server smoke test against qb-core, qb-garages and qb-banking but has not been played yet. ESX is planned and stops with a clear message.
 
 ## What it does
 
@@ -21,7 +21,7 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 | | |
 |---|---|
 | Server | FXServer with OneSync |
-| Framework | Qbox (`qbx_core` 1.19 or newer); QBCore (`qb-core`, experimental, with `qb-garages` and `qb-vehiclekeys`) |
+| Framework | Qbox (`qbx_core` 1.19 or newer); QBCore (`qb-core`, experimental, with `qb-garages`, `qb-vehiclekeys`, `qb-banking`) |
 | Libraries | `ox_lib` 3.30+, `ox_target` 1.17+, `oxmysql` 2.10+ |
 | Optional | `qbx_garages` + `qbx_vehicles` (impound of owned vehicles), `qbx_vehiclekeys`, `Renewed-Banking` (company and police accounts) |
 
