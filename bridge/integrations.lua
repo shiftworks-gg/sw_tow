@@ -156,11 +156,19 @@ banking['Renewed-Banking'] = {
     end,
 }
 
+banking['qb-banking'] = {
+    deposit = function(account, amount, reason)
+        -- Returns the affected row count, or false when the account does not exist.
+        local result = exports['qb-banking']:AddMoney(account, amount, reason)
+        return result == true or (type(result) == 'number' and result > 0)
+    end,
+}
+
 banking.none = { deposit = function() return false end }
 
 local garageName, garage = pick('garage', garages, { 'qbx_garages', 'qb-garages' })
 local keysName, keyAdapter = pick('keys', keys, { 'qbx_vehiclekeys', 'qb-vehiclekeys' })
-local bankingName, bank = pick('banking', banking, { 'Renewed-Banking' })
+local bankingName, bank = pick('banking', banking, { 'Renewed-Banking', 'qb-banking' })
 
 return {
     names = { garage = garageName, keys = keysName, banking = bankingName },
