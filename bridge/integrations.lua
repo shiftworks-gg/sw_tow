@@ -96,11 +96,12 @@ garages['qb-garages'] = {
         return { id = row.id, owner = row.citizenid, model = row.vehicle, props = props }
     end,
 
-    store = function(entity, vehicleId, yard, fee)
+    -- depotprice stays 0: qb-garages lists every vehicle with a price at its public depot lot, but
+    -- this one is at our yard. The fee lives in sw_tow_impound.
+    store = function(entity, vehicleId, yard)
         return MySQL.update.await(
-            'UPDATE player_vehicles SET state = 2, garage = ?, depotprice = ?, body = ?, engine = ?, fuel = ? WHERE id = ?', {
+            'UPDATE player_vehicles SET state = 2, garage = ?, depotprice = 0, body = ?, engine = ?, fuel = ? WHERE id = ?', {
                 'sw_tow_' .. yard,
-                fee,
                 math.floor(GetVehicleBodyHealth(entity)),
                 math.floor(GetVehicleEngineHealth(entity)),
                 math.floor(Entity(entity).state.fuel or 100),
@@ -112,8 +113,8 @@ garages['qb-garages'] = {
         return MySQL.update.await('UPDATE player_vehicles SET state = 0, depotprice = 0 WHERE id = ?', { vehicleId }) > 0
     end,
 
-    -- qb-garages has no spawn hook: vehicles held here sit in a garage named 'sw_tow_<yard>', which
-    -- no qb-garages impound lot lists, so there is nothing to guard.
+    -- qb-garages has no spawn hook. Its menu shows state 2 as "Impound" and will not hand it out;
+    -- its server callback does not check the state, which is a qb-garages issue we cannot guard.
     protect = function() end,
 }
 
