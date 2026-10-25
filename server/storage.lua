@@ -76,6 +76,12 @@ function storage.insertImpound(record)
     })
 end
 
+---Undoes insertImpound when the garage could not store the vehicle.
+---@param id integer
+function storage.deleteImpound(id)
+    MySQL.update.await('DELETE FROM sw_tow_impound WHERE id = ? AND released_at IS NULL', { id })
+end
+
 ---Vehicles on a police hold in one yard, for officers at the counter.
 ---@param yard string
 ---@return SwImpoundRecord[]

@@ -133,13 +133,13 @@ function calls.createForPlayer(src, message)
     if Entity(vehicle).state['sw_tow:company'] or calls.hasVehicle(vehicle) then return false, 'calls.no_vehicle' end
 
     -- Only the owner may call a tow for an owned vehicle, and unowned (NPC) vehicles cannot be called
-    -- in at all: otherwise two players could farm delivery pay with stolen cars.
+    -- in at all: otherwise two players could farm delivery pay with stolen cars. Without a garage
+    -- adapter ownership is unknown and the yard could not store the car, so there are no player calls.
+    if integrations.names.garage == 'none' then return false, 'calls.unavailable' end
     local plate = framework.getPlate(vehicle)
-    if integrations.names.garage ~= 'none' then
-        local vehicleId = integrations.garage.getVehicleId(vehicle, plate)
-        local owned = vehicleId and integrations.garage.getVehicle(vehicleId)
-        if not owned or owned.owner ~= framework.getCitizenId(src) then return false, 'calls.not_owner' end
-    end
+    local vehicleId = integrations.garage.getVehicleId(vehicle, plate)
+    local owned = vehicleId and integrations.garage.getVehicle(vehicleId)
+    if not owned or owned.owner ~= framework.getCitizenId(src) then return false, 'calls.not_owner' end
 
     lastCall[src] = now
     calls.add({
@@ -153,12 +153,23 @@ function calls.createForPlayer(src, message)
     return true
 end
 
+---Is the call's vehicle already hooked or on a truck? Then the worker has done the work.
+---@param call SwCall
+local function loaded(call)
+    return call.vehicle ~= nil and DoesEntityExist(call.vehicle) and Entity(call.vehicle).state['sw_tow:towedBy'] ~= nil
+end
+
 ---@param src integer
+---@return boolean found
 function calls.cancelByCaller(src)
     for id, call in pairs(active) do
         if call.caller == src and call.type == 'player' then
-            remove(id)
-            notify(src, 'calls.cancelled', 'inform')
+            if loaded(call) then
+                notify(src, 'calls.cancel_loaded', 'error')
+            else
+                remove(id)
+                notify(src, 'calls.cancelled', 'inform')
+            end
             return true
         end
     end
@@ -247,7 +258,10 @@ AddEventHandler('playerDropped', function()
     local src = source
     lastCall[src] = nil
     for id, call in pairs(active) do
-        if call.caller == src and call.type == 'player' then remove(id) end
+        if call.caller == src and call.type == 'player' then
+            -- Leaving the game must not cost the worker a tow that is already loaded.
+            if loaded(call) then call.caller = nil else remove(id) end
+        end
     end
 end)
 

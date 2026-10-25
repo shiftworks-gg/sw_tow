@@ -36,7 +36,8 @@
     "already_loaded": "The truck is already loaded.",
     "not_towable": "This vehicle cannot be towed.",
     "occupied": "Someone is inside the vehicle.",
-    "no_control": "The vehicle did not respond. Try again."
+    "no_control": "The vehicle did not respond. Try again.",
+    "needs_order": "Emergency and military vehicles are only towed on an order."
   },
   "calls": {
     "title": "Tow calls",
@@ -72,7 +73,9 @@
     "type_player": "Call",
     "type_police": "Police",
     "type_contract": "Contract",
-    "type_abandoned": "Abandoned"
+    "type_abandoned": "Abandoned",
+    "unavailable": "Tow calls are not available on this server.",
+    "cancel_loaded": "Your vehicle is already on the truck. The call cannot be cancelled now."
   },
   "impound": {
     "counter": "Impound counter",

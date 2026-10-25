@@ -78,6 +78,11 @@ return {
         [21] = true,                        -- Trains.
     },
 
+    orderOnlyClasses = {                    -- Classes that need an accepted call (police order, player call).
+        [18] = true,                        -- Emergency: an empty police car at a scene is not street clutter.
+        [19] = true,                        -- Military.
+    },
+
     calls = {
         command = 'calltow',                -- Players call a tow truck: /calltow [message].
         cancelCommand = 'canceltow',        -- Players cancel their open call.

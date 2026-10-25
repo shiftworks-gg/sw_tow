@@ -4,6 +4,7 @@
 ---client nearby draws the cable locally from the truck's `sw_tow:winch` state bag.
 ---Tow truck: the game's own tow arm holds the vehicle.
 local config = require 'config'
+local util = require 'shared.util'
 local notify = require 'client.notify'
 local shift = require 'client.shift'
 local impound = require 'client.impound'
@@ -283,14 +284,16 @@ end
 
 AddStateBagChangeHandler('sw_tow:winch', '', function(bagName, _, value)
     if not cfg.rope then return end
-    local truck = GetEntityFromStateBagName(bagName)
-    if truck == 0 then return end
-    if type(value) ~= 'table' or (value.phase ~= 'pulling' and value.phase ~= 'lowering') then
-        removeRope(truck)
-        return
-    end
-    local target = NetworkDoesEntityExistWithNetworkId(value.target) and NetToVeh(value.target) or 0
-    if target ~= 0 then startRope(truck, target) end
+    CreateThread(function()
+        local truck = util.entityFromBag(bagName, 1000)
+        if not truck then return end
+        if type(value) ~= 'table' or (value.phase ~= 'pulling' and value.phase ~= 'lowering') then
+            removeRope(truck)
+            return
+        end
+        local target = NetworkDoesEntityExistWithNetworkId(value.target) and NetToVeh(value.target) or 0
+        if target ~= 0 then startRope(truck, target) end
+    end)
 end)
 
 AddEventHandler('onResourceStop', function(resource)

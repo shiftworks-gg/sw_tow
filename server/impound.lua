@@ -15,8 +15,10 @@ local impound = {}
 ---Vehicles currently held in a yard: player_vehicles.id -> yard key.
 ---@type table<integer, string>
 local held = {}
----Records being released right now, so a double click cannot release twice.
+---Records being released and trucks being unloaded right now. Both wait on the database, so a
+---second request in that window must not run the same work twice (double pay, double record).
 local releasing = {}
+local delivering = {}
 
 function impound.load()
     for _, record in ipairs(storage.allActive()) do
@@ -119,8 +121,7 @@ local function pay(payments, distance, callType)
     end
 end
 
-lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
-    if not guard.rate(src, 'deliver') then return false end
+local function deliver(src, truckNet, yardKey)
     local current = shift.get(src)
     local truck = guard.vehicle(truckNet)
     local yard = type(yardKey) == 'string' and config.yards[yardKey]
@@ -159,9 +160,10 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
         -- The owner pays the tow back on release, so calling a tow on your own car never makes money.
         local stored = { stored_at = os.time(), fine = call.fine or 0, tow_charge = total }
         local fee = impound.fee(stored, framework.getVehicleClass(GetEntityModel(target)))
-        if not integrations.garage.store(target, vehicleId, yardKey, fee) then return false, 'common.failed' end
         local holdHours = call.hold and call.holdHours or 0
-        storage.insertImpound({
+        -- Our record first: a vehicle the garage marks impounded without a record here would be
+        -- handed out by the public impound lot while it still stands on the truck.
+        local recordId = storage.insertImpound({
             yard = yardKey,
             plate = plate,
             vehicle_id = vehicleId,
@@ -175,7 +177,13 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
             hold_until = holdHours > 0 and os.time() + holdHours * 3600 or nil,
             towed_by = current.citizenid,
         })
+        if not recordId then return false, 'common.failed' end
         held[vehicleId] = yardKey
+        if not integrations.garage.store(target, vehicleId, yardKey, fee) then
+            held[vehicleId] = nil
+            storage.deleteImpound(recordId)
+            return false, 'common.failed'
+        end
         local ownerSrc = framework.getSourceByCitizenId(owned.owner)
         if ownerSrc and ownerSrc ~= call.caller then
             TriggerClientEvent('sw_tow:client:notify', ownerSrc, locale('impound.owner_notice', plate, yard.label), 'warning')
@@ -194,6 +202,18 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
         log.info(src, 'deliver', ('cleared %s without an order'):format(plate))
     end
     return true
+end
+
+lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
+    if delivering[src] or not guard.rate(src, 'deliver') then return false end
+    delivering[src] = true
+    local ok, result, errorKey = pcall(deliver, src, truckNet, yardKey)
+    delivering[src] = nil
+    if not ok then
+        lib.print.error(result)
+        return false, 'common.failed'
+    end
+    return result, errorKey
 end)
 
 lib.callback.register('sw_tow:server:counterList', function(src, yardKey)

@@ -36,6 +36,9 @@ end
 local function ignored(vehicle, coords)
     local state = Entity(vehicle).state
     if state['sw_tow:company'] or state['sw_tow:contract'] or state['sw_tow:towedBy'] then return true end
+    -- A police car parked at the station with nobody around is not abandoned.
+    local class = framework.getVehicleClass(GetEntityModel(vehicle))
+    if class and (config.orderOnlyClasses[class] or config.blockedClasses[class]) then return true end
     for _, zone in ipairs(cfg.ignoreZones) do
         if util.inZone(coords, zone) then return true end
     end

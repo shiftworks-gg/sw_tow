@@ -36,7 +36,8 @@
     "already_loaded": "Der Wagen ist schon beladen.",
     "not_towable": "Dieses Fahrzeug kann nicht abgeschleppt werden.",
     "occupied": "Im Fahrzeug sitzt jemand.",
-    "no_control": "Das Fahrzeug reagiert nicht. Versuch es noch einmal."
+    "no_control": "Das Fahrzeug reagiert nicht. Versuch es noch einmal.",
+    "needs_order": "Einsatz- und Militärfahrzeuge werden nur auf Auftrag abgeschleppt."
   },
   "calls": {
     "title": "Abschleppaufträge",
@@ -72,7 +73,9 @@
     "type_player": "Anruf",
     "type_police": "Polizei",
     "type_contract": "Vertrag",
-    "type_abandoned": "Verlassen"
+    "type_abandoned": "Verlassen",
+    "unavailable": "Abschleppanrufe sind auf diesem Server nicht verfügbar.",
+    "cancel_loaded": "Dein Fahrzeug ist schon auf dem Abschleppwagen. Der Anruf kann jetzt nicht storniert werden."
   },
   "impound": {
     "counter": "Schalter Verwahrplatz",

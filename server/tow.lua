@@ -10,6 +10,7 @@ local framework = require 'bridge.loader'
 local guard = require 'server.guard'
 local log = require 'server.log'
 local shift = require 'server.shift'
+local calls = require 'server.calls'
 
 local tow = {}
 
@@ -60,9 +61,15 @@ local function ownTruck(src, truckNet)
     return truck, current
 end
 
-local function classAllowed(vehicle)
+---Unknown classes (addon models the framework has no data for) are allowed.
+---@return boolean allowed, string? errorKey
+local function classAllowed(src, vehicle)
     local class = framework.getVehicleClass(GetEntityModel(vehicle))
-    return class == nil or not config.blockedClasses[class]
+    if class == nil then return true end
+    if config.blockedClasses[class] then return false, 'tow.not_towable' end
+    -- Without this, an empty police car at a scene could be towed off and deleted as street clutter.
+    if config.orderOnlyClasses[class] and not calls.acceptedFor(src, vehicle) then return false, 'tow.needs_order' end
+    return true
 end
 
 lib.callback.register('sw_tow:server:attach', function(src, truckNet, targetNet)
@@ -78,7 +85,8 @@ lib.callback.register('sw_tow:server:attach', function(src, truckNet, targetNet)
         return false, 'tow.not_towable'
     end
     if not guard.isEmpty(target) then return false, 'tow.occupied' end
-    if not classAllowed(target) then return false, 'tow.not_towable' end
+    local allowed, errorKey = classAllowed(src, target)
+    if not allowed then return false, errorKey end
 
     local range = current.method == 'flatbed' and config.flatbed.winchRange + 8.0 or config.hook.range + 6.0
     if #(GetEntityCoords(target) - GetEntityCoords(truck)) > range then

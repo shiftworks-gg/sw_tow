@@ -30,6 +30,23 @@ function util.money(amount)
     return (amount < 0 and '-$' or '$') .. grouped
 end
 
+---Client: the entity a state bag belongs to. A bag can arrive a moment before its entity exists
+---on this client (streaming in), so this waits up to `timeout` ms. Call it from a thread.
+---@param bagName string
+---@param timeout? integer
+---@return integer? entity
+function util.entityFromBag(bagName, timeout)
+    local netId = tonumber(bagName:match('^entity:(%d+)$'))
+    if not netId then return end
+    local deadline = GetGameTimer() + (timeout or 5000)
+    while not NetworkDoesEntityExistWithNetworkId(netId) do
+        if GetGameTimer() > deadline then return end
+        Wait(50)
+    end
+    local entity = NetToVeh(netId)
+    return entity ~= 0 and entity or nil
+end
+
 ---@param value any
 ---@return boolean
 function util.isInteger(value)

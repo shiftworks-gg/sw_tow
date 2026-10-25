@@ -127,11 +127,27 @@ function bridge.getPlate(entity)
     return (GetVehicleNumberPlateText(entity) or ''):match('^%s*(.-)%s*$')
 end
 
----qb-core has no server-side class lookup; callers fall back to the base fee.
+-- qb-core's vehicle categories are the GET_VEHICLE_CLASS names, so they map to class numbers.
+local classByCategory = {
+    compacts = 0, sedans = 1, suvs = 2, coupes = 3, muscle = 4, sportsclassics = 5, sports = 6, super = 7,
+    motorcycles = 8, offroad = 9, industrial = 10, utility = 11, vans = 12, cycles = 13, boats = 14,
+    helicopters = 15, planes = 16, service = 17, emergency = 18, military = 19, commercial = 20,
+    trains = 21, openwheel = 22,
+}
+local classCache = {}
+
+---Vehicle class from qb-core's shared vehicle list, or nil for models it does not list.
 ---@param model integer
 ---@return integer?
 function bridge.getVehicleClass(model)
-    return nil
+    local cached = classCache[model]
+    if cached ~= nil then return cached or nil end
+    -- GetShared is newer than GetCoreObject; older qb-core builds only have the shared table.
+    local ok, vehicle = pcall(exports['qb-core'].GetShared, exports['qb-core'], 'VehicleHashes', model)
+    if not ok then vehicle = QBCore.Shared.VehicleHashes and QBCore.Shared.VehicleHashes[model] end
+    local class = vehicle and classByCategory[vehicle.category]
+    classCache[model] = class or false
+    return class
 end
 
 ---@param cb fun(src: integer)
