@@ -32,6 +32,8 @@ return {
         coords = vec4(471.39, -1311.03, 29.21, 114.5),      -- Counter where workers clock in and take trucks.
         size = vec3(2.0, 2.0, 2.5),                         -- Size of the counter interaction box.
         blip = { enabled = true, sprite = 68, color = 47, scale = 0.7 },
+        -- Clerk standing at the counter, so players can see where it is. nil = no clerk.
+        ped = { model = 's_m_m_autoshop_01', scenario = 'WORLD_HUMAN_CLIPBOARD' },
     },
 
     garage = {

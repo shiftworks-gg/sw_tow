@@ -49,7 +49,8 @@ end
 ---Position of the bone in the truck's own space; attachment offsets are relative to it.
 local function boneOffset(truck, bone)
     if bone == 0 then return vec3(0.0, 0.0, 0.0) end
-    return GetOffsetFromEntityGivenWorldCoords(truck, GetWorldPositionOfEntityBone(truck, bone))
+    local world = GetWorldPositionOfEntityBone(truck, bone)
+    return GetOffsetFromEntityGivenWorldCoords(truck, world.x, world.y, world.z)
 end
 
 local function rearOf(truck)
@@ -106,7 +107,8 @@ end
 local function winchOn(truck, target)
     local bone = boneOf(truck)
     local behind, onBed, offset = pathPoints(truck, target, bone)
-    local start = GetOffsetFromEntityGivenWorldCoords(truck, GetEntityCoords(target)) - offset
+    local coords = GetEntityCoords(target)
+    local start = GetOffsetFromEntityGivenWorldCoords(truck, coords.x, coords.y, coords.z) - offset
     local heading = normalizeAngle(GetEntityHeading(target) - GetEntityHeading(truck))
     return animate(truck, target, bone, {
         { pos = start, rot = vec3(0.0, 0.0, heading) },
@@ -211,7 +213,7 @@ exports.ox_target:addGlobalVehicle({
         label = locale('tow.winch'),
         distance = 3.0,
         canInteract = function(entity) return canLoad(entity, 'flatbed') end,
-        onSelect = function(data) load(shift.truck(), data.entity) end,
+        onSelect = function(data) load(shift.truck() --[[@as integer]], data.entity) end,
     },
     {
         name = 'sw_tow_hook',
@@ -219,7 +221,7 @@ exports.ox_target:addGlobalVehicle({
         label = locale('tow.hook'),
         distance = 3.0,
         canInteract = function(entity) return canLoad(entity, 'hook') end,
-        onSelect = function(data) load(shift.truck(), data.entity) end,
+        onSelect = function(data) load(shift.truck() --[[@as integer]], data.entity) end,
     },
     {
         name = 'sw_tow_deliver',
@@ -267,6 +269,7 @@ local function startRope(truck, target)
     local a, b = winchPoint(truck), hookPoint(target)
     local length = #(a - b)
     local rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, length, 4, length + 2.0, 0.5, 0.5, false, false, false, 1.0, false)
+    ---@diagnostic disable-next-line: param-type-mismatch -- nil bone names: attach at the given points
     AttachEntitiesToRope(rope, truck, target, a.x, a.y, a.z, b.x, b.y, b.z, length, false, false, nil, nil)
     ropes[truck] = rope
     CreateThread(function()

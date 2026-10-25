@@ -111,8 +111,41 @@ local function officeOptions()
     return options
 end
 
+---The clerk exists only on this client and only while the player is within 60 m.
+---@param office table config.office
+local function createClerk(office)
+    local cfg = office.ped
+    if not cfg then return end
+    local clerk
+    local function remove()
+        if clerk and DoesEntityExist(clerk) then DeletePed(clerk) end
+        clerk = nil
+    end
+    lib.points.new({
+        coords = office.coords.xyz,
+        distance = 60.0,
+        onEnter = function()
+            if clerk then return end
+            local model = lib.requestModel(cfg.model)
+            if not model then return end
+            local c = office.coords
+            clerk = CreatePed(4, model, c.x, c.y, c.z - 1.0, c.w, false, true)
+            SetModelAsNoLongerNeeded(model)
+            SetEntityInvincible(clerk, true)
+            FreezeEntityPosition(clerk, true)
+            SetBlockingOfNonTemporaryEvents(clerk, true)
+            if cfg.scenario then TaskStartScenarioInPlace(clerk, cfg.scenario, 0, true) end
+        end,
+        onExit = remove,
+    })
+    AddEventHandler('onResourceStop', function(resource)
+        if resource == cache.resource then remove() end
+    end)
+end
+
 function shift.createOffice()
     local office = config.office
+    createClerk(office)
     exports.ox_target:addBoxZone({
         name = 'sw_tow_office',
         coords = office.coords.xyz,

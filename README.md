@@ -46,6 +46,8 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | Key | Default | What it does |
 |---|---|---|
 | `office.coords` | Strawberry tow yard | Counter for clock in, trucks and vehicle release |
+| `office.ped` | mechanic with a clipboard | Clerk at the counter so players find it; `nil` for none |
+| `blockedClasses`, `orderOnlyClasses` | boats, aircraft, trains; emergency, military | Never towable; towable only on an accepted call |
 | `yards` | one yard | Hand-over zone, release counter, exit spots. Add as many as you like |
 | `payout.base`, `payout.perKm`, `payout.max` | 150, 60, 1500 | Delivery pay |
 | `fees` | 250 base, 100 per day | Release fee. The company account gets 60% |
@@ -96,6 +98,13 @@ State bags other scripts can read:
 ## Performance
 
 Built for 0.00 ms while not on shift. The client runs nothing until you clock in: only targets and state bag handlers. The server runs three light timers (call timeouts and the abandoned-vehicle scan every 30 s, contracts every 90 s). On shift the panel refreshes once per second; the winch draws its cable only while it is pulling. Measured resmon values will be published with the 1.0 release.
+
+## Development
+
+`scripts/check.sh` runs lua-language-server over the resource with the CfxLua natives, ox_lib and
+qbx_core definitions: undefined globals and natives, wrong fields, argument counts, types. It fetches
+its tools into `.check/` on first run and exits non-zero on any finding. CI runs it on every push,
+together with a check that all locales have the same keys.
 
 ## Credits
 

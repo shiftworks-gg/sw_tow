@@ -10,6 +10,11 @@ local REJECT = 1      -- off road (dirt tracks)
     | 256             -- traffic light
     | 1024            -- water
 
+-- 0x07FB139B592FA687, once REQUEST_PATH_NODES_IN_AREA_THIS_FRAME. Called by hash if renamed again.
+local requestPathNodes = RequestPathsPreferAccurateBoundingstruct or function(x1, y1, x2, y2)
+    return Citizen.InvokeNative(0x07FB139B592FA687, x1, y1, x2, y2)
+end
+
 -- Los Santos and Blaine County, without Cayo Perico.
 local MAP = { minX = -3400.0, maxX = 4000.0, minY = -3600.0, maxY = 7600.0 }
 
@@ -19,7 +24,7 @@ local MAP = { minX = -3400.0, maxX = 4000.0, minY = -3600.0, maxY = 7600.0 }
 local function loadNodes(x, y, size)
     local deadline = GetGameTimer() + 1500
     repeat
-        RequestPathNodesInAreaThisFrame(x, y, x + size, y + size)
+        requestPathNodes(x, y, x + size, y + size)
         if AreNodesLoadedForArea(x, y, x + size, y + size) then return true end
         Wait(0)
     until GetGameTimer() > deadline

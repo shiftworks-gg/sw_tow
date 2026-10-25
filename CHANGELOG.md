@@ -10,4 +10,5 @@
 - Shift panel in the Shiftworks style, restyled from `config.ui`.
 - QBCore bridge (experimental): `qb-core`, `qb-garages`, `qb-vehiclekeys`, `qb-banking`. Impounded vehicles stay off the qb-garages depot list. Impound fees use the base rate there, since qb-core has no server-side vehicle class.
 - `/swtow_spots`: admin tool that finds roadside spots for NPC contracts across the map and shows them as blips.
+- A clerk stands at the office counter (`office.ped`), so players can find it.
 - Languages: English, German, Russian.

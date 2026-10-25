@@ -1,0 +1,31 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache tools
+        uses: actions/cache@v4
+        with:
+          path: .check
+          key: check-${{ hashFiles('scripts/check.sh') }}
+      - name: Static analysis (lua-language-server)
+        run: bash scripts/check.sh
+      - name: Locales have the same keys
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          def keys(d, p=''):
+              return {k2 for k, v in d.items() for k2 in (keys(v, p + k + '.') if isinstance(v, dict) else {p + k})}
+          sets = {lang: keys(json.load(open(f'locales/{lang}.json', encoding='utf-8'))) for lang in ('en', 'de', 'ru')}
+          ok = True
+          for lang, s in sets.items():
+              for missing in sorted(sets['en'] - s): print(f'{lang}: missing {missing}'); ok = False
+              for extra in sorted(s - sets['en']): print(f'{lang}: extra {extra}'); ok = False
+          sys.exit(0 if ok else 1)
+          PY

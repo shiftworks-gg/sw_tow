@@ -1,4 +1,5 @@
 ---Qbox server bridge. The only server file that calls qbx_core directly.
+---@diagnostic disable-next-line: deprecated -- still the documented way to load qbx's lib on ox_lib 3.x
 lib.load('@qbx_core.modules.lib')  -- Defines the `qbx` helper table (spawnVehicle, getVehiclePlate).
 
 local bridge = {}
@@ -92,7 +93,7 @@ end
 ---@param props? table ox_lib vehicle properties
 ---@return integer netId, integer entity
 function bridge.spawnVehicle(model, coords, props)
-    return qbx.spawnVehicle({ model = model, spawnSource = coords, props = props })
+    return qbx.spawnVehicle({ model = model --[[@as integer]], spawnSource = coords, props = props })
 end
 
 ---@param entity integer
@@ -119,7 +120,7 @@ function bridge.onPlayerUnload(cb)
     AddEventHandler('QBCore:Server:OnPlayerUnload', cb)
 end
 
----@param cb fun(src: integer, job: SwJob)
+---@param cb fun(src: integer, job: SwJob?)
 function bridge.onJobUpdate(cb)
     AddEventHandler('QBCore:Server:OnJobUpdate', function(src)
         cb(src, bridge.getJob(src))

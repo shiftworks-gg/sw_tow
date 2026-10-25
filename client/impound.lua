@@ -90,12 +90,13 @@ end
 ---Separate counters (yards with their own `counter` position) get their own target box.
 function impound.createCounters()
     for key, yard in pairs(config.yards) do
-        if yard.counter then
+        local counter = yard.counter --[[@as vector4?]]
+        if counter then
             exports.ox_target:addBoxZone({
                 name = 'sw_tow_counter_box_' .. key,
-                coords = yard.counter.xyz,
+                coords = counter.xyz,
                 size = vec3(2.0, 2.0, 2.5),
-                rotation = yard.counter.w,
+                rotation = counter.w,
                 debug = config.debug,
                 options = impound.counterOptions(key),
             })

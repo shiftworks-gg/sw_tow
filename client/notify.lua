@@ -24,7 +24,7 @@ local function notify(message, kind)
     lib.notify({
         title = locale('notify.' .. (kinds[kind] and kind or 'inform')),
         description = message,
-        type = kind == 'error' and 'error' or (kind == 'success' and 'success' or 'inform'),
+        type = kind == 'error' and 'error' or (kind == 'success' and 'success' or 'info'),
         icon = k.icon,
         iconColor = k.iconColor,
         duration = k.duration,

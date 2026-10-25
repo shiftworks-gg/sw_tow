@@ -56,8 +56,8 @@ end
 
 local function deleteTruck(src)
     local current = shifts[src]
-    if not current or not current.truck then return end
-    local truck = current.truck
+    local truck = current and current.truck
+    if not current or not truck then return end
     truckOwner[truck] = nil
     current.truck, current.method = nil, nil
     if DoesEntityExist(truck) then framework.deleteVehicle(truck) end

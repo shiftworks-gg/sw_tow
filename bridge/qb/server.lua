@@ -155,7 +155,7 @@ function bridge.onPlayerUnload(cb)
     AddEventHandler('QBCore:Server:OnPlayerUnload', cb)
 end
 
----@param cb fun(src: integer, job: SwJob)
+---@param cb fun(src: integer, job: SwJob?)
 function bridge.onJobUpdate(cb)
     AddEventHandler('QBCore:Server:OnJobUpdate', function(src)
         cb(src, bridge.getJob(src))

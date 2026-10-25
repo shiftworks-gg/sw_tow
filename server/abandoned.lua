@@ -57,7 +57,7 @@ local function scan()
     local canCall = next(shift.all()) ~= nil
     local open = calls.count(function(call) return call.type == 'abandoned' end)
 
-    for _, vehicle in ipairs(GetAllVehicles()) do
+    for _, vehicle in ipairs(GetAllVehicles() --[[@as integer[] ]]) do
         local driver = GetPedInVehicleSeat(vehicle, -1)
         local coords = GetEntityCoords(vehicle)
         if driver ~= 0 and IsPedAPlayer(driver) then
