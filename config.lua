@@ -22,8 +22,8 @@ return {
     },
 
     adapters = {                -- Which integration to use. 'auto' picks the first one that is running.
-        garage = 'auto',        -- 'qbx_garages' | 'none'. With 'none' owned vehicles cannot be impounded.
-        keys = 'auto',          -- 'qbx_vehiclekeys' | 'none'.
+        garage = 'auto',        -- 'qbx_garages' | 'qb-garages' | 'none'. With 'none' owned vehicles cannot be impounded.
+        keys = 'auto',          -- 'qbx_vehiclekeys' | 'qb-vehiclekeys' | 'none'.
         banking = 'auto',       -- 'Renewed-Banking' | 'none'. Receives the company share of release fees.
     },
 

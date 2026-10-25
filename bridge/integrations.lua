@@ -82,6 +82,41 @@ garages.qbx_garages = {
     end,
 }
 
+garages['qb-garages'] = {
+    getVehicleId = function(_, plate)
+        local row = MySQL.single.await('SELECT id FROM player_vehicles WHERE plate = ?', { plate })
+        return row and row.id or nil
+    end,
+
+    getVehicle = function(vehicleId)
+        local row = MySQL.single.await('SELECT id, citizenid, vehicle, mods FROM player_vehicles WHERE id = ?', { vehicleId })
+        local props = row and row.mods and json.decode(row.mods)
+        if type(props) ~= 'table' then return end
+        props.model = props.model or joaat(row.vehicle)
+        return { id = row.id, owner = row.citizenid, model = row.vehicle, props = props }
+    end,
+
+    store = function(entity, vehicleId, yard, fee)
+        return MySQL.update.await(
+            'UPDATE player_vehicles SET state = 2, garage = ?, depotprice = ?, body = ?, engine = ?, fuel = ? WHERE id = ?', {
+                'sw_tow_' .. yard,
+                fee,
+                math.floor(GetVehicleBodyHealth(entity)),
+                math.floor(GetVehicleEngineHealth(entity)),
+                math.floor(Entity(entity).state.fuel or 100),
+                vehicleId,
+            }) > 0
+    end,
+
+    markOut = function(_, vehicleId)
+        return MySQL.update.await('UPDATE player_vehicles SET state = 0, depotprice = 0 WHERE id = ?', { vehicleId }) > 0
+    end,
+
+    -- qb-garages has no spawn hook: vehicles held here sit in a garage named 'sw_tow_<yard>', which
+    -- no qb-garages impound lot lists, so there is nothing to guard.
+    protect = function() end,
+}
+
 garages.none = {
     getVehicleId = function() return nil end,
     getVehicle = function() return nil end,
@@ -101,6 +136,12 @@ keys.qbx_vehiclekeys = {
     end,
 }
 
+keys['qb-vehiclekeys'] = {
+    give = function(src, entity)
+        TriggerClientEvent('vehiclekeys:client:SetOwner', src, GetVehicleNumberPlateText(entity))
+    end,
+}
+
 keys.none = { give = function() end }
 
 ---@class SwBankingAdapter
@@ -116,8 +157,8 @@ banking['Renewed-Banking'] = {
 
 banking.none = { deposit = function() return false end }
 
-local garageName, garage = pick('garage', garages, { 'qbx_garages' })
-local keysName, keyAdapter = pick('keys', keys, { 'qbx_vehiclekeys' })
+local garageName, garage = pick('garage', garages, { 'qbx_garages', 'qb-garages' })
+local keysName, keyAdapter = pick('keys', keys, { 'qbx_vehiclekeys', 'qb-vehiclekeys' })
 local bankingName, bank = pick('banking', banking, { 'Renewed-Banking' })
 
 return {
