@@ -80,6 +80,40 @@ return {
         maxOpen = 10,                       -- Open calls on the whole server at once.
     },
 
+    police = {
+        enabled = true,                     -- Officers on duty can order a tow on any vehicle.
+        maxFine = 5000,                     -- Highest fine an officer can add to the release fee.
+        maxHoldHours = 168,                 -- Longest timed hold. 0 in the form means "until lifted".
+        ordersPerHour = 6,                  -- Per officer, against abuse.
+        fineAccount = 'police',             -- Account that receives the fine when the owner pays.
+    },
+
+    contracts = {
+        enabled = true,                     -- Broken-down NPC vehicles to tow when no player is calling.
+        maxOpen = 3,                        -- Open contracts at once. Never more than workers on shift + 1.
+        interval = 90,                      -- Seconds between checks for a new contract.
+        minDistance = 400.0,                -- Contract spot distance from the worker, min and max.
+        maxDistance = 3500.0,
+        models = {                          -- Vehicles that break down (lore-friendly base game models).
+            'asea', 'asterope', 'emperor', 'fugitive', 'ingot', 'intruder', 'premier', 'primo',
+            'stanier', 'stratum', 'washington', 'blista', 'dilettante', 'panto', 'prairie', 'rhapsody',
+            'bison', 'bobcatxl', 'burrito3', 'minivan', 'rumpo', 'speedo', 'youga',
+        },
+    },
+
+    abandoned = {
+        enabled = true,                     -- Vehicles a player left behind become calls.
+        minutes = 30,                       -- How long a vehicle must stand without anyone nearby.
+        playerRadius = 50.0,                -- No player may be this close for the timer to run.
+        owned = false,                      -- Also flag players' own (owned) vehicles. Off: only unowned ones.
+        maxOpen = 4,                        -- Open abandoned-vehicle calls at once.
+        scanInterval = 30,                  -- Seconds between scans. Calls are only created while someone is on shift.
+        payFactor = 0.6,                    -- Share of the normal delivery pay.
+        ignoreZones = {                     -- No flags inside these boxes (parking lots, garages).
+            -- { coords = vec3(215.0, -810.0, 30.7), size = vec3(60.0, 60.0, 10.0), rotation = 70.0 },
+        },
+    },
+
     payout = {
         base = 150,                         -- $ for every delivered vehicle.
         perKm = 60,                         -- $ per km between pickup and yard.
@@ -106,5 +140,6 @@ return {
         default = 500,
         takeTruck = 5000,
         call = 1000,
+        policeOrder = 3000,
     },
 }

@@ -6,6 +6,13 @@ local shift = require 'client.shift'
 local routeBlip
 local activeCallId
 
+local typeIcons = {
+    player = 'phone',
+    police = 'shield-halved',
+    contract = 'screwdriver-wrench',
+    abandoned = 'hourglass-half',
+}
+
 local function clearRoute()
     if routeBlip and DoesBlipExist(routeBlip) then RemoveBlip(routeBlip) end
     routeBlip, activeCallId = nil, nil
@@ -48,9 +55,10 @@ local function openList()
         local description = locale('calls.line', streetAt(coords), ('%.1f'):format(distance), minutes(call.age))
         if call.message ~= '' then description = description .. '\n' .. call.message end
         options[#options + 1] = {
-            title = ('#%d · %s%s'):format(call.id, call.plate, call.mine and (' · ' .. locale('calls.yours')) or ''),
+            title = ('#%d · %s · %s%s'):format(call.id, locale('calls.type_' .. call.type), call.plate,
+                call.mine and (' · ' .. locale('calls.yours')) or ''),
             description = description,
-            icon = call.mine and 'location-dot' or 'phone',
+            icon = call.mine and 'location-dot' or (typeIcons[call.type] or 'phone'),
             onSelect = function()
                 if call.mine then
                     local ok = lib.callback.await('sw_tow:server:dropCall', false, call.id)

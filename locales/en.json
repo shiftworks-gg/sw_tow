@@ -52,7 +52,6 @@
     "busy": "All tow drivers are busy. Try again later.",
     "no_vehicle": "Stand next to your vehicle to call a tow truck.",
     "not_owner": "Only the owner can call a tow truck for this vehicle.",
-    "new": "New tow call: %s",
     "accepted": "%s is on the way.",
     "reopened": "Your driver dropped the call. It is open again.",
     "completed": "Your vehicle is at the impound yard.",
@@ -65,7 +64,15 @@
     "yours": "yours, select to drop",
     "dropped": "Call dropped.",
     "route_set": "Route set.",
-    "blip": "Tow call"
+    "blip": "Tow call",
+    "new_player": "New tow call: %s",
+    "new_police": "Police tow order: %s",
+    "new_contract": "New contract: %s",
+    "new_abandoned": "Abandoned vehicle: %s",
+    "type_player": "Call",
+    "type_police": "Police",
+    "type_contract": "Contract",
+    "type_abandoned": "Abandoned"
   },
   "impound": {
     "counter": "Impound counter",
@@ -85,6 +92,29 @@
     "not_in_yard": "Drive into the impound yard first.",
     "no_cargo": "Nothing is loaded on the truck.",
     "too_fast": "Delivery refused: the trip was too fast.",
-    "no_order": "This vehicle has an owner and no tow order."
+    "no_order": "This vehicle has an owner and no tow order.",
+    "owner_notice": "Your vehicle %s was towed to %s."
+  },
+  "contracts": {
+    "message": "Broken down at the roadside. Doors locked, hazards on."
+  },
+  "abandoned": {
+    "message": "Left without a driver for %s+ minutes."
+  },
+  "police": {
+    "order": "Order a tow",
+    "form_title": "Tow order",
+    "reason": "Reason",
+    "fine": "Fine ($)",
+    "hold": "Police hold",
+    "hold_hours": "Hold for hours",
+    "hold_hours_hint": "0 keeps the hold until an officer lifts it",
+    "ordered": "Tow ordered. Drivers on shift have the call.",
+    "already_ordered": "This vehicle already has a tow order.",
+    "limit": "Order limit reached for this hour.",
+    "holds_title": "Police holds",
+    "no_holds": "No vehicles on hold here.",
+    "until_lifted": "until lifted",
+    "lifted": "Hold lifted."
   }
 }

@@ -4,6 +4,8 @@ local impound = require 'client.impound'
 require 'client.notify'
 require 'client.tow'
 require 'client.calls'
+require 'client.police'
+require 'client.contracts'
 
 shift.createOffice()
 impound.createCounters()

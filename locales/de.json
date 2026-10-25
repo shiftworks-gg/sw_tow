@@ -52,7 +52,6 @@
     "busy": "Alle Fahrer sind beschäftigt. Versuch es später noch einmal.",
     "no_vehicle": "Stell dich neben dein Fahrzeug, um einen Abschleppwagen zu rufen.",
     "not_owner": "Nur der Besitzer kann für dieses Fahrzeug einen Abschleppwagen rufen.",
-    "new": "Neuer Abschleppauftrag: %s",
     "accepted": "%s ist unterwegs.",
     "reopened": "Dein Fahrer hat den Auftrag abgegeben. Er ist wieder offen.",
     "completed": "Dein Fahrzeug steht auf dem Verwahrplatz.",
@@ -65,7 +64,15 @@
     "yours": "deiner, auswählen zum Abgeben",
     "dropped": "Auftrag abgegeben.",
     "route_set": "Route gesetzt.",
-    "blip": "Abschleppauftrag"
+    "blip": "Abschleppauftrag",
+    "new_player": "Neuer Abschleppauftrag: %s",
+    "new_police": "Polizeilicher Abschleppauftrag: %s",
+    "new_contract": "Neuer Vertrag: %s",
+    "new_abandoned": "Verlassenes Fahrzeug: %s",
+    "type_player": "Anruf",
+    "type_police": "Polizei",
+    "type_contract": "Vertrag",
+    "type_abandoned": "Verlassen"
   },
   "impound": {
     "counter": "Schalter Verwahrplatz",
@@ -85,6 +92,29 @@
     "not_in_yard": "Fahr zuerst auf den Verwahrplatz.",
     "no_cargo": "Auf dem Wagen ist nichts geladen.",
     "too_fast": "Übergabe abgelehnt: Die Fahrt war zu schnell.",
-    "no_order": "Dieses Fahrzeug hat einen Besitzer und keinen Abschleppauftrag."
+    "no_order": "Dieses Fahrzeug hat einen Besitzer und keinen Abschleppauftrag.",
+    "owner_notice": "Dein Fahrzeug %s wurde zu %s abgeschleppt."
+  },
+  "contracts": {
+    "message": "Am Straßenrand liegengeblieben. Türen verriegelt, Warnblinker an."
+  },
+  "abandoned": {
+    "message": "Seit über %s Minuten ohne Fahrer abgestellt."
+  },
+  "police": {
+    "order": "Abschleppen anordnen",
+    "form_title": "Abschleppanordnung",
+    "reason": "Grund",
+    "fine": "Bußgeld ($)",
+    "hold": "Polizeiliche Sperre",
+    "hold_hours": "Sperre in Stunden",
+    "hold_hours_hint": "0 sperrt, bis ein Beamter die Sperre aufhebt",
+    "ordered": "Abschleppen angeordnet. Die Fahrer im Dienst haben den Auftrag.",
+    "already_ordered": "Für dieses Fahrzeug gibt es schon einen Abschleppauftrag.",
+    "limit": "Auftragslimit für diese Stunde erreicht.",
+    "holds_title": "Polizeiliche Sperren",
+    "no_holds": "Hier ist kein Fahrzeug gesperrt.",
+    "until_lifted": "bis zur Aufhebung",
+    "lifted": "Sperre aufgehoben."
   }
 }

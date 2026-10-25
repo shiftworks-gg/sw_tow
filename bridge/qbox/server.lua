@@ -15,6 +15,14 @@ function bridge.getCitizenId(src)
     return p and p.PlayerData.citizenid
 end
 
+---Server id of an online character, or nil when they are offline.
+---@param citizenid string
+---@return integer?
+function bridge.getSourceByCitizenId(citizenid)
+    local p = exports.qbx_core:GetPlayerByCitizenId(citizenid)
+    return p and p.PlayerData.source or nil
+end
+
 ---@param src integer
 ---@return string
 function bridge.getName(src)

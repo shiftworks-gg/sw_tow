@@ -66,12 +66,34 @@ local COLUMNS = [[id, yard, plate, vehicle_id, owner, model, reason, note, fine,
 ---@return integer id
 function storage.insertImpound(record)
     return MySQL.insert.await([[
-        INSERT INTO sw_tow_impound (yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge, police_hold, towed_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sw_tow_impound (yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge,
+            police_hold, hold_until, towed_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FROM_UNIXTIME(?), ?)
     ]], {
         record.yard, record.plate, record.vehicle_id, record.owner, record.model, record.reason,
-        record.note, record.fine or 0, record.tow_charge or 0, record.police_hold and 1 or 0, record.towed_by,
+        record.note, record.fine or 0, record.tow_charge or 0, record.police_hold and 1 or 0,
+        record.hold_until, record.towed_by,
     })
+end
+
+---Vehicles on a police hold in one yard, for officers at the counter.
+---@param yard string
+---@return SwImpoundRecord[]
+function storage.heldInYard(yard)
+    return MySQL.query.await(
+        ('SELECT %s FROM sw_tow_impound WHERE yard = ? AND police_hold = 1 AND released_at IS NULL ORDER BY stored_at'):format(COLUMNS),
+        { yard }
+    ) or {}
+end
+
+---@param id integer
+---@return boolean
+function storage.liftHold(id)
+    local changed = MySQL.update.await(
+        'UPDATE sw_tow_impound SET police_hold = 0, hold_until = NULL WHERE id = ? AND released_at IS NULL',
+        { id }
+    )
+    return (changed or 0) > 0
 end
 
 ---@return SwImpoundRecord[]

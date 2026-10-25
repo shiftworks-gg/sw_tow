@@ -139,7 +139,9 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
     local call = calls.acceptedFor(src, target)
     local vehicleId = integrations.garage.getVehicleId(target, plate)
     local payments, total = {}, 0
-    if call then payments, total = planPayments(src, truck, deliveryPay(distance)) end
+    if call then
+        payments, total = planPayments(src, truck, math.floor(deliveryPay(distance) * (call.payFactor or 1.0)))
+    end
 
     if vehicleId then
         local owned = integrations.garage.getVehicle(vehicleId)
@@ -149,9 +151,10 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
             return false, 'impound.no_order'
         end
         -- The owner pays the tow back on release, so calling a tow on your own car never makes money.
-        local stored = { stored_at = os.time(), fine = 0, tow_charge = total }
+        local stored = { stored_at = os.time(), fine = call.fine or 0, tow_charge = total }
         local fee = impound.fee(stored, framework.getVehicleClass(GetEntityModel(target)))
         if not integrations.garage.store(target, vehicleId, yardKey, fee) then return false, 'common.failed' end
+        local holdHours = call.hold and call.holdHours or 0
         storage.insertImpound({
             yard = yardKey,
             plate = plate,
@@ -160,10 +163,17 @@ lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
             model = owned.model,
             reason = call.type,
             note = call.message,
+            fine = call.fine,
             tow_charge = total,
+            police_hold = call.hold,
+            hold_until = holdHours > 0 and os.time() + holdHours * 3600 or nil,
             towed_by = current.citizenid,
         })
         held[vehicleId] = yardKey
+        local ownerSrc = framework.getSourceByCitizenId(owned.owner)
+        if ownerSrc and ownerSrc ~= call.caller then
+            TriggerClientEvent('sw_tow:client:notify', ownerSrc, locale('impound.owner_notice', plate, yard.label), 'warning')
+        end
     end
 
     tow.clear(truck)
@@ -235,7 +245,10 @@ lib.callback.register('sw_tow:server:release', function(src, recordId)
 
         held[record.vehicle_id] = nil
         integrations.keys.give(src, entity)
-        local companyAmount = math.floor(fee * config.fees.companyShare)
+        -- The fine goes to the police; the company gets its share of the rest.
+        local fine = math.min(record.fine or 0, fee)
+        if fine > 0 then integrations.banking.deposit(config.police.fineAccount, fine, 'sw-tow-fine') end
+        local companyAmount = math.floor((fee - fine) * config.fees.companyShare)
         if companyAmount > 0 then
             integrations.banking.deposit(config.fees.companyAccount, companyAmount, 'sw-tow-release')
         end

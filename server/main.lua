@@ -9,6 +9,9 @@ local storage = require 'server.storage'
 require 'server.shift'
 require 'server.tow'
 require 'server.calls'
+require 'server.police'
+require 'server.contracts'
+require 'server.abandoned'
 local impound = require 'server.impound'
 
 local version = GetResourceMetadata(cache.resource, 'version', 0)

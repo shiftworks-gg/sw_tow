@@ -2,6 +2,7 @@
 local config = require 'config'
 local util = require 'shared.util'
 local notify = require 'client.notify'
+local police = require 'client.police'
 
 local impound = {}
 
@@ -58,6 +59,7 @@ function impound.counterOptions(yardKey)
             distance = 2.5,
             onSelect = function() openCounter(yardKey) end,
         },
+        police.counterOption(yardKey),
     }
 end
 
