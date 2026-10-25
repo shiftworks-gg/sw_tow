@@ -60,13 +60,23 @@ return {
         },
     },
 
-    flatbed = {
-        bone = 'bodyshell',                 -- Truck bone the cargo is attached to.
-        bed = vec3(0.0, -2.35, 0.55),       -- Bed point relative to the truck: y along the truck, z bed surface.
-        winch = vec3(0.0, 0.9, 0.95),       -- Winch drum relative to the truck, where the cable starts.
-        rampStart = vec3(0.0, -7.0, 0.0),   -- Where the winch path starts behind the truck (z is ground level).
+    flatbed = {                             -- Truck-space values: x right, y forward, z up, in metres.
+        winch = vec3(0.0, 0.9, 0.95),       -- Winch drum, where the cable starts.
+        bedFrontY = 0.5,                    -- The loaded vehicle's front stops here, just behind the cab.
+        rearY = nil,                        -- Rear edge of the bed. nil = measured from the truck model.
+        bedHeight = 0.55,                   -- Bed surface height, used only if measuring it fails.
+        ramp = {
+            model = 'prop_metal_plates01',  -- Ramp object. Try others in game with /swtow_ramps.
+            pair = false,                   -- true: one ramp per wheel track; false: one wide ramp.
+            spacing = 1.7,                  -- Distance between the two ramps when pair = true.
+            candidates = {                  -- What /swtow_ramps shows when run without a model.
+                'prop_metal_plates01', 'prop_metal_plates02', 'prop_mp_ramp_01', 'prop_mp_ramp_02',
+                'prop_mp_ramp_03', 'prop_byard_ramp', 'prop_skate_flatramp', 'imp_prop_flatbed_ramp',
+            },
+        },
         winchRange = 12.0,                  -- Max distance from the rear of the bed to a vehicle to hook it.
-        pullSpeed = 1.4,                    -- Winch speed in m/s.
+        pullSpeed = 1.0,                    -- Winch speed in m/s.
+        pullTimeout = 40,                   -- Seconds before a stuck pull is finished without physics.
         rope = true,                        -- Draw the winch cable for everyone nearby.
     },
 
@@ -159,5 +169,6 @@ return {
         takeTruck = 5000,
         call = 1000,
         policeOrder = 3000,
+        ramps = 1500,
     },
 }

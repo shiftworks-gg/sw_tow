@@ -37,7 +37,11 @@
     "not_towable": "This vehicle cannot be towed.",
     "occupied": "Someone is inside the vehicle.",
     "no_control": "The vehicle did not respond. Try again.",
-    "needs_order": "Emergency and military vehicles are only towed on an order."
+    "needs_order": "Emergency and military vehicles are only towed on an order.",
+    "ramps": "Lower / raise the ramps",
+    "secure": "Secure on the bed",
+    "truck_moving": "Stop the truck first.",
+    "need_truck": "Take a company flatbed first."
   },
   "calls": {
     "title": "Tow calls",

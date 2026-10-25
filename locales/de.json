@@ -37,7 +37,11 @@
     "not_towable": "Dieses Fahrzeug kann nicht abgeschleppt werden.",
     "occupied": "Im Fahrzeug sitzt jemand.",
     "no_control": "Das Fahrzeug reagiert nicht. Versuch es noch einmal.",
-    "needs_order": "Einsatz- und Militärfahrzeuge werden nur auf Auftrag abgeschleppt."
+    "needs_order": "Einsatz- und Militärfahrzeuge werden nur auf Auftrag abgeschleppt.",
+    "ramps": "Rampen absenken / anheben",
+    "secure": "Auf der Ladefläche sichern",
+    "truck_moving": "Halte den Wagen zuerst an.",
+    "need_truck": "Nimm zuerst einen Firmen-Abschleppwagen."
   },
   "calls": {
     "title": "Abschleppaufträge",
