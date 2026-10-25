@@ -57,7 +57,9 @@ local function ownTruck(src, truckNet)
     local current = shift.get(src)
     local truck = guard.vehicle(truckNet)
     if not current or not truck or current.truck ~= truck then return end
-    if not guard.near(src, GetEntityCoords(truck), 15.0) then return end
+    -- With the ramps down the vehicle (and the worker next to it) can stand some 25 m from the
+    -- truck's centre: 10 m of winch range behind 6 m of ramps behind half a truck.
+    if not guard.near(src, GetEntityCoords(truck), 35.0) then return end
     return truck, current
 end
 
