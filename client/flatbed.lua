@@ -10,7 +10,13 @@ local config = require 'config'
 local util = require 'shared.util'
 
 local cfg = config.flatbed
-local flatbed = {}
+local flatbed = { debug = config.debug == true }
+
+-- /swtow_debug: winch telemetry and ramp fitting in F8 (and the client log), for tuning.
+RegisterCommand('swtow_debug', function()
+    flatbed.debug = not flatbed.debug
+    print(('[sw_tow] debug %s'):format(flatbed.debug and 'on' or 'off'))
+end, false)
 
 ---@param entity integer
 ---@param timeout? integer ms
@@ -72,18 +78,29 @@ local ramps = {}
 ---@field angle number slope in degrees
 ---@field footY number truck-space y where the ramps touch the ground
 ---@field foot vector3 world point where the ramps touch the ground
+---@field edgeY number truck-space y of the rear edge of the bed
+---@field bedZ number world z of the bed surface at its rear edge
+---@field groundZ number world z of the ground under the ramp foot
 ---@field info string numbers for the preview and debug output
 
----Where the ramps go. The driving surface is taken as the model's diagonal from its lower rear
----corner to its upper front corner, which fits a flat plate and a ready-made wedge alike. The ramp
----is turned so that this line runs from the ground to the rear edge of the bed.
+---@class SwRampAdjust
+---@field tilt number extra tilt in radians, from measuring the placed ramp
+---@field z number extra height in metres, from measuring the placed ramp
+
+---Where the ramps go. The first guess takes the model's diagonal, lower rear corner to upper front
+---corner, as the driving surface; that fits flat plates and ready-made wedges. `adjust` carries the
+---corrections found by measuring the placed ramp, because hooks and legs make a bounding box lie
+---about where the wheels actually run.
 ---@param truck integer
+---@param adjust? SwRampAdjust
 ---@return SwRampGeometry?
-local function rampGeometry(truck)
+local function rampGeometry(truck, adjust)
+    adjust = adjust or { tilt = 0.0, z = 0.0 }
     local model = joaat(cfg.ramp.model)
     local top = bedRear(truck)
     if not top then return end
     local f, right = axes(truck)
+    local truckMin = GetModelDimensions(GetEntityModel(truck))
     local min, max = GetModelDimensions(model)
     local dy, dz = max.y - min.y, max.z - min.z
     local diagonal = math.sqrt(dy * dy + dz * dz)
@@ -92,19 +109,20 @@ local function rampGeometry(truck)
     local rise = math.max(0.05, top.z - groundZ)
     local slope = math.asin(math.min(1.0, rise / diagonal))
     -- Work in a frame whose y points at the truck. Ramps modelled with the high end at -y (flip)
-    -- are turned around: their model y runs the other way.
+    -- are turned around: their model x and y run the other way.
     local flip = cfg.ramp.flip == true
     local yHigh, yLow = flip and -min.y or max.y, flip and -max.y or min.y
-    local tilt = slope - math.atan(dz, dy)
+    local xCentre = (min.x + max.x) / 2 * (flip and -1 or 1)
+    local tilt = slope - math.atan(dz, dy) + adjust.tilt
 
     -- A point of that frame after tilting nose-up towards the truck.
     local c, sn = math.cos(tilt), math.sin(tilt)
     local function turned(y, z) return y * c - z * sn, y * sn + z * c end
     local up = vec3(0.0, 0.0, 1.0)
     local highY, highZ = turned(yHigh, max.z)
-    local origin = top - f * highY - up * highZ
+    local origin = top - f * highY - up * highZ + up * adjust.z - right * xCentre
     local lowY, lowZ = turned(yLow, min.z)
-    local foot = origin + f * lowY + up * lowZ
+    local foot = origin + right * xCentre + f * lowY + up * lowZ
 
     local heading = GetEntityHeading(truck) + (flip and 180.0 or 0.0)
     local rot = vec3(math.deg(flip and -tilt or tilt), 0.0, heading)
@@ -118,7 +136,10 @@ local function rampGeometry(truck)
         angle = math.deg(slope),
         footY = toTruck(truck, foot).y,
         foot = foot,
-        info = ('size %.2f x %.2f x %.2f, bed %.2f m above ground, slope %.0f°, tilted %.0f°%s'):format(
+        edgeY = truckMin.y,
+        bedZ = top.z,
+        groundZ = groundZ,
+        info = ('size %.2f x %.2f x %.2f, bed %.2f m above ground, slope %.0f°, tilted %.1f°%s'):format(
             max.x - min.x, dy, dz, rise, math.deg(slope), math.deg(tilt), flip and ', flipped' or ''),
     }
 end
@@ -130,6 +151,58 @@ local function removeRamps(truck)
     for i = 1, #list do
         if DoesEntityExist(list[i]) then DeleteObject(list[i]) end
     end
+end
+
+---Height of the ramp's driving surface at a truck-space point, measured with a ray onto the ramps.
+---@param truck integer
+---@param list integer[]
+---@param y number truck-space y
+---@return number?
+local function rampSurface(truck, list, y)
+    local p = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, 0.0)
+    local probe = StartExpensiveSynchronousShapeTestLosProbe(p.x, p.y, p.z + 4.0, p.x, p.y, p.z - 4.0, 16, 0, 7)
+    local _, hit, point, _, entity = GetShapeTestResult(probe)
+    if not (hit == 1 or hit == true) then return end
+    for i = 1, #list do
+        if list[i] == entity then return point.z end
+    end
+end
+
+local function applyTransforms(list, geometry)
+    for i = 1, #list do
+        local t = geometry.transforms[i]
+        SetEntityCoordsNoOffset(list[i], t.pos.x, t.pos.y, t.pos.z, false, false, false)
+        SetEntityRotation(list[i], t.rot.x, t.rot.y, t.rot.z, 2, false)
+    end
+end
+
+---Places the ramps, then measures where their surface really is and corrects tilt and height until
+---it runs from the ground to the bed edge with no step. Two or three rounds are enough.
+---@param truck integer
+---@param list integer[]
+---@return SwRampGeometry?
+local function fitRamps(truck, list)
+    local adjust = { tilt = 0.0, z = 0.0 }
+    local geometry
+    for _ = 1, 4 do
+        geometry = rampGeometry(truck, adjust)
+        if not geometry then return end
+        applyTransforms(list, geometry)
+        local highY, lowY = geometry.edgeY - 0.3, geometry.footY + 0.6
+        local zHigh, zLow = rampSurface(truck, list, highY), rampSurface(truck, list, lowY)
+        if not zHigh or not zLow then break end
+        -- The straight line the wheels should run on: ground at the foot, bed height at the edge.
+        local run = geometry.edgeY - geometry.footY
+        local function wanted(y) return geometry.groundZ + (geometry.bedZ - geometry.groundZ) * (y - geometry.footY) / run end
+        local slopeWanted = math.atan(wanted(highY) - wanted(lowY), highY - lowY)
+        local slopeNow = math.atan(zHigh - zLow, highY - lowY)
+        local highError = wanted(highY) - zHigh
+        if math.abs(highError) < 0.02 and math.abs(slopeWanted - slopeNow) < math.rad(0.3) then break end
+        adjust.tilt = adjust.tilt + (slopeWanted - slopeNow)
+        adjust.z = adjust.z + highError
+    end
+    if flatbed.debug then print(('[sw_tow] ramps fitted: %s, height %+.2f m'):format(geometry.info, adjust.z)) end
+    return geometry
 end
 
 local function placeRamps(truck)
@@ -151,8 +224,8 @@ local function placeRamps(truck)
         list[i] = object
     end
     SetModelAsNoLongerNeeded(model)
+    fitRamps(truck, list)
     ramps[truck] = list
-    if config.debug then print('[sw_tow] ramps: ' .. geometry.info) end
 end
 
 AddStateBagChangeHandler('sw_tow:ramps', '', function(bagName, _, value)
@@ -211,6 +284,14 @@ end
 
 -- Driving the vehicle with the winch --------------------------------------------------------------
 
+---Freezes or releases the truck. Done explicitly around every winch run, not only through the
+---ramps state bag, so the truck can never be pushed by its cargo.
+---@param truck integer
+---@param hold boolean
+local function holdTruck(truck, hold)
+    if requestControl(truck, 1500) then FreezeEntityPosition(truck, hold) end
+end
+
 ---@class SwPull
 ---@field truck integer
 ---@field target integer
@@ -236,9 +317,11 @@ end
 ---Moves the vehicle along the truck at winch speed until `done`. Only horizontal velocity is set:
 ---gravity, wheel contact, suspension and the bend at the top of the ramp stay with the physics.
 ---@param pull SwPull
----@return boolean ok, string? why 'stuck'|'unstable'|'gone'|'timeout'
+---@return boolean ok, string? why 'stuck'|'unstable'|'gone'|'timeout'|'misaligned'|'truck'
 local function drive(pull)
     local truck, target = pull.truck, pull.target
+    local truckStart = GetEntityCoords(truck)
+    local lastLog = 0
     SetVehicleHandbrake(target, false)
     SetVehicleBrake(target, false)
     SetVehicleEngineOn(target, false, true, true)
@@ -255,8 +338,12 @@ local function drive(pull)
 
         local now = GetGameTimer()
         if now - started > (cfg.pullTimeout or 40) * 1000 then return false, 'timeout' end
-        if math.abs(GetEntityPitch(target)) > 40.0 or math.abs(GetEntityRoll(target)) > 35.0 then
+        if math.abs(GetEntityPitch(target)) > 40.0 or math.abs(GetEntityRoll(target)) > 25.0 then
             return false, 'unstable'
+        end
+        -- The truck must not move at all; if it does, the cargo is pushing it: stop at once.
+        if #(GetEntityCoords(truck) - truckStart) > 0.25 or math.abs(GetEntityRoll(truck)) > 6.0 then
+            return false, 'truck'
         end
 
         local local_ = toTruck(truck, GetEntityCoords(target))
@@ -278,13 +365,14 @@ local function drive(pull)
             end
         end
 
-        -- Progress along the truck; no progress for 2.5 s means the vehicle hangs on something.
+        -- Progress along the truck. Loading gets one stronger pull over a bump; anything else that
+        -- stops moving for 1.5 s is stuck, and the winch stops before tyres burn or things break.
         local progress = local_.y * pull.direction
         if hold then bestAt = now end
         if progress > best + 0.1 then
             best, bestAt = progress, now
-        elseif now - bestAt > 2500 then
-            if boosted then return false, 'stuck' end
+        elseif now - bestAt > 1500 then
+            if boosted or pull.direction < 0 then return false, 'stuck' end
             boosted, bestAt = true, now
         end
 
@@ -303,13 +391,29 @@ local function drive(pull)
 
         -- Keep the vehicle straight; nobody is steering it.
         local av = GetEntityRotationVelocity(target)
-        SetEntityAngularVelocity(target, av.x, av.y, math.max(-0.6, math.min(0.6, math.rad(err) * 1.5)))
+        local yaw = math.max(-0.6, math.min(0.6, math.rad(err) * 1.5))
+        SetEntityAngularVelocity(target, av.x, av.y, yaw)
+
+        if flatbed.debug and now - lastLog >= 250 then
+            lastLog = now
+            print(('[sw_tow] pull t=%.1f y=%.2f x=%+.2f heading err=%+.1f yaw=%+.2f av.z=%+.2f speed=%.2f pitch=%.1f roll=%.1f%s%s'):format(
+                (now - started) / 1000, local_.y, local_.x, err, yaw, av.z, GetEntitySpeed(target),
+                GetEntityPitch(target), GetEntityRoll(target), hold and ' HOLD' or '', boosted and ' BOOST' or ''))
+        end
         Wait(0)
     end
 
     SetEntityVelocity(target, 0.0, 0.0, 0.0)
     SetVehicleHandbrake(target, true)
     return true
+end
+
+---Stops the vehicle where it is, with no motion left in it.
+local function halt(target)
+    if not DoesEntityExist(target) then return end
+    SetEntityVelocity(target, 0.0, 0.0, 0.0)
+    SetEntityAngularVelocity(target, 0.0, 0.0, 0.0)
+    SetVehicleHandbrake(target, true)
 end
 
 ---Attaches the vehicle where it rests now, so securing never moves it.
@@ -321,27 +425,6 @@ local function attachInPlace(truck, target)
     local rot = vec3(rv.x - rt.x, rv.y - rt.y, ((rv.z - rt.z + 180.0) % 360.0) - 180.0)
     AttachEntityToEntity(target, truck, 0, offset.x, offset.y, offset.z, rot.x, rot.y, rot.z,
         false, false, false, false, 2, true)
-end
-
----Last resort when physics cannot finish: lift the vehicle onto the bed in a short glide.
----@param truck integer
----@param target integer
-local function glideOntoBed(truck, target)
-    local min, max = GetModelDimensions(GetEntityModel(target))
-    local _, _, facing = leadingEnd(truck, target)
-    local bed = toTruck(truck, bedRear(truck) --[[@as vector3]])
-    local final = vec3(0.0, cfg.bedFrontY - (max.y - min.y) / 2 - 0.2, bed.z - min.z)
-    local finalRot = vec3(0.0, 0.0, facing and 0.0 or 180.0)
-    local from = toTruck(truck, GetEntityCoords(target))
-    local start = GetGameTimer()
-    while true do
-        local t = math.min(1.0, (GetGameTimer() - start) / 1500)
-        local p = from + (final - from) * t
-        AttachEntityToEntity(target, truck, 0, p.x, p.y, p.z, finalRot.x, finalRot.y, finalRot.z,
-            false, false, false, false, 2, true)
-        if t >= 1.0 or not DoesEntityExist(target) then break end
-        Wait(0)
-    end
 end
 
 ---@class SwLineUp
@@ -396,7 +479,8 @@ function flatbed.lineUp(truck, target)
 end
 
 ---Loads `target` onto `truck`: ramps down, winch it to the ramp foot and straighten it there, pull
----it up, secure it, ramps up. The server has already accepted the attach request.
+---it up, secure it, ramps up. The server has already accepted the attach request. If the vehicle
+---cannot make it (too low for the bend, a wheel off the ramp), it is let back down to the ground.
 ---@param truck integer
 ---@param target integer
 ---@return boolean secured, string? errorKey
@@ -409,6 +493,7 @@ function flatbed.load(truck, target)
     local geometry = rampGeometry(truck)
     if not geometry then return false, 'tow.no_ramps' end
     SetVehicleDoorsShut(target, false)
+    holdTruck(truck, true)
 
     local ok, why = drive({
         truck = truck,
@@ -421,20 +506,34 @@ function flatbed.load(truck, target)
             return lead >= cfg.bedFrontY
         end,
     })
-    if not ok and why == 'gone' then return false, 'tow.no_control' end
-    if not ok and why == 'misaligned' then
-        -- Still on the ground: leave it there rather than drag it up crooked.
-        return false, 'tow.not_straight'
-    end
-    Wait(400)  -- Let the suspension settle before the pose is frozen.
+    halt(target)
+    if flatbed.debug then print('[sw_tow] load result: ' .. (ok and 'ok' or tostring(why))) end
+
     if ok then
+        Wait(500)  -- Let the suspension settle on the bed before the pose is frozen.
         attachInPlace(truck, target)
-    else
-        if config.debug then print('[sw_tow] winch fallback: ' .. tostring(why)) end
-        glideOntoBed(truck, target)
+        flatbed.setRamps(truck, false)
+        holdTruck(truck, false)
+        return true
     end
-    flatbed.setRamps(truck, false)
-    return true
+
+    if why == 'gone' then
+        holdTruck(truck, false)
+        return false, 'tow.no_control'
+    end
+    if why ~= 'misaligned' and why ~= 'truck' then
+        -- Part-way up: let it roll back down to the ground the way it came.
+        drive({
+            truck = truck,
+            target = target,
+            direction = -1,
+            speed = cfg.pullSpeed,
+            done = function() return leadingEnd(truck, target) <= geometry.footY - 0.5 end,
+        })
+        halt(target)
+    end
+    holdTruck(truck, false)
+    return false, why == 'misaligned' and 'tow.not_straight' or 'tow.cannot_climb'
 end
 
 ---Secures a vehicle that is already on the bed (the owner drove it up the ramps).
@@ -459,32 +558,36 @@ function flatbed.isOnBed(truck, target)
     return math.abs(p.x) < 1.2 and p.y > min.y and p.y < cfg.bedFrontY and p.z > 0.3
 end
 
----Unloads the cargo: ramps down, detach, roll it down the ramps, ramps up.
+---Unloads the cargo: ramps down, detach, roll it down the ramps, ramps up. The vehicle rests where
+---physics left it when it was secured, so letting go of it never pushes it into the bed.
 ---@param truck integer
 ---@param target integer
 ---@return boolean
 function flatbed.unload(truck, target)
     if not flatbed.rampsDown(truck) and not flatbed.setRamps(truck, true) then return false end
     if not requestControl(target) then return false end
+    local geometry = rampGeometry(truck)
+    if not geometry then return false end
     local min, max = GetModelDimensions(GetEntityModel(target))
-    local truckMin = GetModelDimensions(GetEntityModel(truck))
-    local rampMin, rampMax = GetModelDimensions(joaat(cfg.ramp.model))
     -- Clear of the ramp foot by half a vehicle and a metre.
-    local stopY = truckMin.y - (rampMax.y - rampMin.y) - (max.y - min.y) / 2 - 1.0
+    local stopY = geometry.footY - (max.y - min.y) / 2 - 1.0
+    holdTruck(truck, true)
 
-    -- Detach from the pose it rests in, with no motion carried over.
     DetachEntity(target, true, true)
-    SetEntityVelocity(target, 0.0, 0.0, 0.0)
-
-    drive({
+    halt(target)
+    Wait(100)
+    local ok, why = drive({
         truck = truck,
         target = target,
         direction = -1,
         speed = cfg.pullSpeed,
         done = function() return toTruck(truck, GetEntityCoords(target)).y <= stopY end,
     })
-    SetVehicleOnGroundProperly(target)
+    halt(target)
+    if flatbed.debug then print('[sw_tow] unload result: ' .. (ok and 'ok' or tostring(why))) end
+    if ok then SetVehicleOnGroundProperly(target) end
     flatbed.setRamps(truck, false)
+    holdTruck(truck, false)
     return true
 end
 
@@ -497,7 +600,7 @@ function flatbed.previewRamps(truck, models)
         if IsModelInCdimage(joaat(name)) then
             cfg.ramp.model = name
             placeRamps(truck)
-            local geometry = rampGeometry(truck)
+            local geometry = ramps[truck] and fitRamps(truck, ramps[truck])
             print(('[sw_tow] ramp preview: %s · %s'):format(name, geometry and geometry.info or 'no geometry'))
             lib.showTextUI(('%s · %.0f°'):format(name, geometry and geometry.angle or 0))
             Wait(6000)
