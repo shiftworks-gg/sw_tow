@@ -41,7 +41,10 @@
     "ramps": "Rampen absenken / anheben",
     "secure": "Auf der Ladefläche sichern",
     "truck_moving": "Halte den Wagen zuerst an.",
-    "need_truck": "Nimm zuerst einen Firmen-Abschleppwagen."
+    "need_truck": "Nimm zuerst einen Firmen-Abschleppwagen.",
+    "too_close": "Zu nah: Das Fahrzeug muss hinter der orangen Haltelinie stehen.",
+    "not_in_line": "Nicht in Linie: Stell den Wagen gerade vor das Fahrzeug, entlang der orangen Linie.",
+    "no_ramps": "Die Rampen können hier nicht aufgestellt werden."
   },
   "calls": {
     "title": "Abschleppaufträge",

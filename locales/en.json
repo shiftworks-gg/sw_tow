@@ -41,7 +41,10 @@
     "ramps": "Lower / raise the ramps",
     "secure": "Secure on the bed",
     "truck_moving": "Stop the truck first.",
-    "need_truck": "Take a company flatbed first."
+    "need_truck": "Take a company flatbed first.",
+    "too_close": "Too close: the vehicle must stand behind the orange stop line.",
+    "not_in_line": "Not in line: park the truck straight in front of the vehicle, along the orange line.",
+    "no_ramps": "The ramps could not be placed here."
   },
   "calls": {
     "title": "Tow calls",

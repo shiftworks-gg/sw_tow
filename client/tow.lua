@@ -72,6 +72,10 @@ local function load(truck, target)
     exclusive(function()
         local truckNet, targetNet = VehToNet(truck), VehToNet(target)
         local method = state(truck, 'sw_tow:method')
+        if method == 'flatbed' then
+            local inLine, lineError = flatbed.lineUp(truck, target)
+            if not inLine then return false, lineError end
+        end
         local ok, errorKey = lib.callback.await('sw_tow:server:attach', false, truckNet, targetNet)
         if not ok then return false, errorKey end
 
@@ -81,9 +85,10 @@ local function load(truck, target)
         end
 
         if method == 'flatbed' then
-            if not flatbed.load(truck, target) then
+            local loaded, loadError = flatbed.load(truck, target)
+            if not loaded then
                 lib.callback.await('sw_tow:server:detach', false, truckNet)
-                return false, 'tow.no_control'
+                return false, loadError or 'tow.no_control'
             end
             return lib.callback.await('sw_tow:server:secured', false, truckNet)
         end
