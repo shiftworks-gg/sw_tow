@@ -111,30 +111,33 @@ local function officeOptions()
     return options
 end
 
----The clerk exists only on this client and only while the player is within 60 m.
+---The clerk exists only on this client and only while the player is within 60 m. Aiming at the
+---clerk offers the same options as the counter.
 ---@param office table config.office
-local function createClerk(office)
+---@param options table[] ox_target options of the counter
+local function createClerk(office, options)
     local cfg = office.ped
     if not cfg then return end
+    local c = cfg.coords or office.coords
     local clerk
     local function remove()
         if clerk and DoesEntityExist(clerk) then DeletePed(clerk) end
         clerk = nil
     end
     lib.points.new({
-        coords = office.coords.xyz,
+        coords = c.xyz,
         distance = 60.0,
         onEnter = function()
             if clerk then return end
             local model = lib.requestModel(cfg.model)
             if not model then return end
-            local c = office.coords
             clerk = CreatePed(4, model, c.x, c.y, c.z - 1.0, c.w, false, true)
             SetModelAsNoLongerNeeded(model)
             SetEntityInvincible(clerk, true)
             FreezeEntityPosition(clerk, true)
             SetBlockingOfNonTemporaryEvents(clerk, true)
             if cfg.scenario then TaskStartScenarioInPlace(clerk, cfg.scenario, 0, true) end
+            exports.ox_target:addLocalEntity(clerk, options)
         end,
         onExit = remove,
     })
@@ -145,14 +148,15 @@ end
 
 function shift.createOffice()
     local office = config.office
-    createClerk(office)
+    local options = officeOptions()
+    createClerk(office, options)
     exports.ox_target:addBoxZone({
         name = 'sw_tow_office',
         coords = office.coords.xyz,
         size = office.size,
         rotation = office.coords.w,
         debug = config.debug,
-        options = officeOptions(),
+        options = options,
     })
     impound.addBlip(office.coords.xyz, office.blip, office.label)
 end
