@@ -33,7 +33,7 @@ return {
         size = vec3(2.0, 2.0, 2.5),                         -- Size of the counter interaction box.
         blip = { enabled = true, sprite = 68, color = 47, scale = 0.7 },
         -- Clerk in front of the counter, so players can find it; aiming at the clerk offers the
-        -- counter's options. coords = where the clerk stands (vec4, ground + 1 m). nil = no clerk.
+        -- counter's options. coords = where the clerk stands (vec4; placed on the floor below it). nil = no clerk.
         ped = { model = 's_m_m_autoshop_01', scenario = 'WORLD_HUMAN_CLIPBOARD', coords = vec4(470.0, -1311.6, 29.21, 114.5) },
     },
 

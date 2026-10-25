@@ -131,7 +131,9 @@ local function createClerk(office, options)
             if clerk then return end
             local model = lib.requestModel(cfg.model)
             if not model then return end
-            clerk = CreatePed(4, model, c.x, c.y, c.z - 1.0, c.w, false, true)
+            -- Stand on the floor under the point, whatever height the config coordinate was taken at.
+            local found, groundZ = GetGroundZFor_3dCoord(c.x, c.y, c.z + 1.0, false)
+            clerk = CreatePed(4, model, c.x, c.y, found and groundZ or c.z - 1.0, c.w, false, true)
             SetModelAsNoLongerNeeded(model)
             SetEntityInvincible(clerk, true)
             FreezeEntityPosition(clerk, true)
