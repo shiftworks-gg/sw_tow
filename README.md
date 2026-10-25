@@ -70,6 +70,7 @@ Texts live in `locales/en.json`, `de.json`, `ru.json`. The language follows `set
 | `/towcalls` or `F6` | workers on shift | Call list. The key can be changed in GTA settings |
 | `/swtow_spots generate [cell]` | admins | Scans the map for roadside spots for NPC contracts and saves them to `data/spots.generated.lua`. One spot per cell, 250 m by default (100–1000). Takes a few minutes; stay in game |
 | `/swtow_spots show` / `hide` | admins | Shows every contract spot on the map: blue are bundled, orange generated |
+| `/swtow_coords` | everyone | Prints your position and heading as `vec4(...)` and copies it, for placing things in `config.lua` |
 
 Admin commands need the ace `command.swtow_spots` (the default Qbox recipe gives `group.admin` all commands). Generated spots are used after `restart sw_tow`, face along the road, and keep 150 m from each other and 120 m from the office and yards. Delete a line from the file to drop a spot, or the whole file to go back to the bundled list.
 

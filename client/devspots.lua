@@ -109,3 +109,13 @@ RegisterNetEvent('sw_tow:dev:hideSpots', clearBlips)
 AddEventHandler('onResourceStop', function(resource)
     if resource == cache.resource then clearBlips() end
 end)
+
+-- Placing things for config.lua: stand where it goes, face the way it should face, run
+-- /swtow_coords. Prints your position as vec4 to F8 and copies it to the clipboard.
+RegisterCommand('swtow_coords', function()
+    local c, h = GetEntityCoords(cache.ped), GetEntityHeading(cache.ped)
+    local text = ('vec4(%.2f, %.2f, %.2f, %.1f)'):format(c.x, c.y, c.z, h)
+    print('[sw_tow] ' .. text)
+    lib.setClipboard(text)
+    TriggerEvent('sw_tow:client:notify', text, 'inform')
+end, false)
