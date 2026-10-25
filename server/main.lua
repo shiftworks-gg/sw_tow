@@ -13,6 +13,7 @@ require 'server.police'
 require 'server.contracts'
 require 'server.abandoned'
 require 'server.devspots'
+require 'server.version'
 local impound = require 'server.impound'
 local spotlist = require 'server.spotlist'
 
