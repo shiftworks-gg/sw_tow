@@ -10,7 +10,8 @@ local config = require 'config'
 local util = require 'shared.util'
 
 local cfg = config.flatbed
-local flatbed = { debug = config.debug == true }
+-- Telemetry: config.debug, `setr sw_tow_debug 1` on the server (survives restarts), or /swtow_debug.
+local flatbed = { debug = config.debug == true or GetConvar('sw_tow_debug', '0') == '1' }
 
 -- /swtow_debug: winch telemetry and ramp fitting in F8 (and the client log), for tuning.
 RegisterCommand('swtow_debug', function()
@@ -376,29 +377,43 @@ local function drive(pull)
             boosted, bestAt = true, now
         end
 
+        -- An empty vehicle can keep its brakes on; the winch rolls it, so they stay off every frame.
+        SetVehicleHandbrake(target, false)
+
         local f, right = axes(truck)
         local speed = pull.speed * (boosted and 1.6 or 1.0)
+        -- Only on the ground, before the climb, is the body steered (turned and moved onto the
+        -- centre line). On the ramps the winch only sets the speed along the truck and physics does
+        -- the rest: overriding rotation there makes the vehicle shake.
+        local onGround = pull.direction > 0 and pull.gateY ~= nil
         local want
         if hold then
             -- Slide sideways onto the centre line, no forward motion.
             want = right * math.max(-0.5, math.min(0.5, -local_.x * 1.5))
-        else
+        elseif onGround then
             -- Steer back onto the truck's centre line: aim 3 m ahead on it.
-            want = norm(f * pull.direction + right * (-local_.x / 3.0)) * speed
+            want = norm(f + right * (-local_.x / 3.0)) * speed
+        else
+            -- On the ramps or the bed: straight along the truck, the slightest centring only.
+            want = norm(f * pull.direction + right * math.max(-0.05, math.min(0.05, -local_.x * 0.1))) * speed
         end
         local v = GetEntityVelocity(target)
-        SetEntityVelocity(target, v.x + (want.x - v.x) * 0.2, v.y + (want.y - v.y) * 0.2, v.z)
+        SetEntityVelocity(target, v.x + (want.x - v.x) * 0.12, v.y + (want.y - v.y) * 0.12, v.z)
 
-        -- Keep the vehicle straight; nobody is steering it.
+        local yaw = 0.0
+        if onGround then
+            -- On flat ground there is no pitch or roll to keep, so only the turn is set.
+            yaw = math.max(-0.4, math.min(0.4, math.rad(err) * 1.2))
+            SetEntityAngularVelocity(target, 0.0, 0.0, yaw)
+        end
         local av = GetEntityRotationVelocity(target)
-        local yaw = math.max(-0.6, math.min(0.6, math.rad(err) * 1.5))
-        SetEntityAngularVelocity(target, av.x, av.y, yaw)
 
         if flatbed.debug and now - lastLog >= 250 then
             lastLog = now
             print(('[sw_tow] pull t=%.1f y=%.2f x=%+.2f heading err=%+.1f yaw=%+.2f av.z=%+.2f speed=%.2f pitch=%.1f roll=%.1f%s%s'):format(
                 (now - started) / 1000, local_.y, local_.x, err, yaw, av.z, GetEntitySpeed(target),
-                GetEntityPitch(target), GetEntityRoll(target), hold and ' HOLD' or '', boosted and ' BOOST' or ''))
+                GetEntityPitch(target), GetEntityRoll(target), hold and ' HOLD' or (onGround and ' GROUND' or ''),
+                boosted and ' BOOST' or ''))
         end
         Wait(0)
     end
@@ -585,7 +600,15 @@ function flatbed.unload(truck, target)
     })
     halt(target)
     if flatbed.debug then print('[sw_tow] unload result: ' .. (ok and 'ok' or tostring(why))) end
-    if ok then SetVehicleOnGroundProperly(target) end
+    if not ok then
+        -- It did not come down: strap it again where it stands, still cargo of this truck.
+        Wait(300)
+        attachInPlace(truck, target)
+        flatbed.setRamps(truck, false)
+        holdTruck(truck, false)
+        return false
+    end
+    SetVehicleOnGroundProperly(target)
     flatbed.setRamps(truck, false)
     holdTruck(truck, false)
     return true

@@ -129,6 +129,9 @@ lib.callback.register('sw_tow:server:lowering', function(src, truckNet)
     local record = truck and tow.get(truck)
     if not truck or not record then return false end
     if record.method == 'flatbed' then
+        -- Not secured while it comes down: no delivery mid-unload, and it can be strapped again if
+        -- it does not come down.
+        record.secured = false
         Entity(truck).state:set('sw_tow:winch', { target = NetworkGetNetworkIdFromEntity(record.target), phase = 'lowering' }, true)
     end
     return true

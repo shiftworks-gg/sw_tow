@@ -126,7 +126,11 @@ local function unload(truck)
             return false, 'tow.no_control'
         end
         if state(truck, 'sw_tow:method') == 'flatbed' then
-            flatbed.unload(truck, target)
+            if not flatbed.unload(truck, target) then
+                -- Still on the bed and strapped again: it stays this truck's cargo.
+                lib.callback.await('sw_tow:server:secured', false, truckNet)
+                return false, 'tow.cannot_unload'
+            end
         else
             DetachVehicleFromTowTruck(truck, target)
         end
