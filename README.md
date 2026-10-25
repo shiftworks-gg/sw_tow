@@ -48,6 +48,7 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 |---|---|---|
 | `office.coords` | Strawberry tow yard | Counter for clock in, trucks and vehicle release |
 | `office.ped` | mechanic with a clipboard | Clerk at the counter so players find it; `nil` for none |
+| `flatbed.motion` | `'animated'` | How the winch moves the vehicle: a computed path (always ends straight on the bed) or `'physics'` |
 | `blockedClasses`, `orderOnlyClasses` | boats, aircraft, trains; emergency, military | Never towable; towable only on an accepted call |
 | `yards` | one yard | Hand-over zone, release counter, exit spots. Add as many as you like |
 | `payout.base`, `payout.perKm`, `payout.max` | 150, 60, 1500 | Delivery pay |

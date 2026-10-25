@@ -46,13 +46,14 @@
     "no_ramps": "The ramps could not be placed here.",
     "too_far": "Too far: back the truck up %s m.",
     "off_side": "The vehicle is %s m off to the side: line the truck up behind it.",
-    "off_angle": "The vehicle stands at %s°: at most 35°.",
+    "off_angle": "The vehicle stands at %s° to the truck: line the truck up straighter in front of it.",
     "uneven": "The ground under the ramps is uneven (kerb or pothole): stop on level ground.",
     "guide_ok": "Ready to load: hook the winch cable.",
     "not_straight": "The winch could not straighten the vehicle on the ground: line the truck up behind it and try again.",
     "cannot_climb": "The vehicle could not make it up the ramps and was let back down.",
     "cannot_unload": "The vehicle did not come down and is strapped on the bed again. Try again.",
-    "path_blocked": "Something is in the way to the ramps. Clear the path and try again."
+    "path_blocked": "Something is in the way to the ramps. Clear the path and try again.",
+    "landing_blocked": "There is no room behind the ramps. Clear the space and try again."
   },
   "calls": {
     "title": "Tow calls",

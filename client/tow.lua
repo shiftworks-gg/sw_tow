@@ -1,5 +1,5 @@
 ---Loading vehicles onto company trucks.
----Flatbed: ramps, winch cable and real physics; see client/flatbed.lua.
+---Flatbed: ramps and winch cable; see client/flatbed.lua.
 ---Tow truck: the game's own tow arm holds the vehicle.
 local config = require 'config'
 local util = require 'shared.util'
@@ -126,10 +126,11 @@ local function unload(truck)
             return false, 'tow.no_control'
         end
         if state(truck, 'sw_tow:method') == 'flatbed' then
-            if not flatbed.unload(truck, target) then
-                -- Still on the bed and strapped again: it stays this truck's cargo.
+            local unloaded, unloadError = flatbed.unload(truck, target)
+            if not unloaded then
+                -- Still on the bed and strapped: it stays this truck's cargo.
                 lib.callback.await('sw_tow:server:secured', false, truckNet)
-                return false, 'tow.cannot_unload'
+                return false, unloadError or 'tow.cannot_unload'
             end
         else
             DetachVehicleFromTowTruck(truck, target)
@@ -271,8 +272,8 @@ end
 local watching = {}
 
 ---Runs on every client near a truck while its winch moves a vehicle (state bag phase pulling or
----lowering): draws the cable, and lets this client's player pass through the moving vehicle, so
----nobody can block a loading by standing in the way and nobody is pushed over by it.
+---lowering): draws the cable, and lets this client's player pass through the moving vehicle (in
+---physics mode too), so nobody can block a loading by standing in the way or be pushed over by it.
 ---@param truck integer
 ---@param target integer
 local function watchWinch(truck, target)

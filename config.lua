@@ -76,9 +76,10 @@ return {
             },
         },
         winchRange = 10.0,                  -- Max distance from the ramp foot to the vehicle's bumper.
+        motion = 'animated',                -- 'animated': follows a computed path, always straight on the bed;
+                                            -- 'physics': the game's physics rolls it up. Unloading is always animated.
         pullSpeed = 1.0,                    -- Winch speed in m/s.
-        pullTimeout = 40,                   -- Seconds before a winch run gives up.
-        steerWheels = false,                -- Also turn the front wheels visibly while lining up.
+        pullTimeout = 40,                   -- Physics only: seconds before a winch run gives up.
         rope = true,                        -- Draw the winch cable for everyone nearby.
     },
 
