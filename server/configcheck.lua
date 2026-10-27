@@ -153,6 +153,15 @@ function checker.run(cfg)
     boolean('flatbed.rope')
 
     number('hook.range', 2, 15)
+
+    boolean('sounds.enabled')
+    for _, event in ipairs({ 'rampsDown', 'rampsUp', 'winch', 'secured', 'hookOn', 'hookOff' }) do
+        local entry = get('sounds.' .. event)
+        if entry ~= false and (type(entry) ~= 'table' or type(entry[1]) ~= 'string'
+            or (entry[2] ~= false and type(entry[2]) ~= 'string')) then
+            problem('sounds.' .. event, "must be { 'sound name', 'soundset' } or false")
+        end
+    end
     classes('blockedClasses')
     classes('orderOnlyClasses')
 

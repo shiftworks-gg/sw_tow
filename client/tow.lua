@@ -7,6 +7,7 @@ local notify = require 'client.notify'
 local shift = require 'client.shift'
 local impound = require 'client.impound'
 local flatbed = require 'client.flatbed'
+local sounds = require 'client.sounds'
 
 local busy = false
 local cfg = config.flatbed
@@ -341,6 +342,7 @@ local function watchWinch(truck, target)
         ropes[truck] = list
     end
     CreateThread(function()
+        local motor = sounds.loop('winch', truck)
         while watching[truck] == target do
             if not DoesEntityExist(truck) or not DoesEntityExist(target) then break end
             SetEntityNoCollisionEntity(target, cache.ped, true)
@@ -349,8 +351,10 @@ local function watchWinch(truck, target)
                 holdSegment(list[1], w, bend)
                 holdSegment(list[2], bend, h)
             end
+            motor.keep()
             Wait(0)
         end
+        motor.stop()
         if watching[truck] == target then watching[truck] = nil end
         if ropes[truck] == list then removeRope(truck) end
     end)
@@ -358,15 +362,25 @@ end
 
 AddStateBagChangeHandler('sw_tow:winch', '', function(bagName, _, value)
     CreateThread(function()
-        local truck = util.entityFromBag(bagName, 1000)
+        local truck, arrived = util.entityFromBag(bagName, 1000)
         if not truck then return end
         if type(value) ~= 'table' or (value.phase ~= 'pulling' and value.phase ~= 'lowering') then
             watching[truck] = nil
             removeRope(truck)
+            if not arrived and type(value) == 'table' and value.phase == 'secured' then sounds.play('secured', truck) end
             return
         end
         local target = NetworkDoesEntityExistWithNetworkId(value.target) and NetToVeh(value.target) or 0
         if target ~= 0 then watchWinch(truck, target) end
+    end)
+end)
+
+-- The tow arm catching and letting go of a vehicle, heard by everyone near the tow truck.
+AddStateBagChangeHandler('sw_tow:cargo', '', function(bagName, _, value)
+    CreateThread(function()
+        local truck, arrived = util.entityFromBag(bagName, 1000)
+        if not truck or arrived or state(truck, 'sw_tow:method') ~= 'hook' then return end
+        sounds.play(value and 'hookOn' or 'hookOff', truck)
     end)
 end)
 

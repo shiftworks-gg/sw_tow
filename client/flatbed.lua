@@ -15,6 +15,7 @@
 ---truck is frozen while they are down.
 local config = require 'config'
 local util = require 'shared.util'
+local sounds = require 'client.sounds'
 
 local cfg = config.flatbed
 -- Telemetry: config.debug, `setr sw_tow_debug 1` on the server (survives restarts), or /swtow_debug.
@@ -290,9 +291,10 @@ end
 
 AddStateBagChangeHandler('sw_tow:ramps', '', function(bagName, _, value)
     CreateThread(function()
-        local truck = util.entityFromBag(bagName, 2000)
+        local truck, arrived = util.entityFromBag(bagName, 2000)
         if not truck then return end
         if value then placeRamps(truck) else removeRamps(truck) end
+        if not arrived then sounds.play(value and 'rampsDown' or 'rampsUp', truck) end
         -- The client that simulates the truck keeps it still while the ramps are down.
         if NetworkHasControlOfEntity(truck) then FreezeEntityPosition(truck, value and true or false) end
     end)

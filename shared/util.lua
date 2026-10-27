@@ -34,17 +34,20 @@ end
 ---on this client (streaming in), so this waits up to `timeout` ms. Call it from a thread.
 ---@param bagName string
 ---@param timeout? integer
----@return integer? entity
+---@return integer? entity, boolean? arrived true when the entity was not here yet: the bag came with
+---it as it streamed in, so the value is old news (no sound, no animation)
 function util.entityFromBag(bagName, timeout)
     local netId = tonumber(bagName:match('^entity:(%d+)$'))
     if not netId then return end
+    local arrived = not NetworkDoesEntityExistWithNetworkId(netId)
     local deadline = GetGameTimer() + (timeout or 5000)
     while not NetworkDoesEntityExistWithNetworkId(netId) do
         if GetGameTimer() > deadline then return end
         Wait(50)
     end
     local entity = NetToVeh(netId)
-    return entity ~= 0 and entity or nil
+    if entity == 0 then return end
+    return entity, arrived
 end
 
 ---@param value any

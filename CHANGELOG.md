@@ -13,6 +13,8 @@
 - `/swtow_spots`: admin tool that finds roadside spots for NPC contracts across the map and shows them as blips.
 - A clerk stands at the office counter (`office.ped`), so players can find it.
 - Languages: English, German, Russian.
+- Sounds: ramps, winch motor, straps and tow arm, from the game's own audio, played from the truck for everyone nearby (`config.sounds`, `/swtow_sounds` to pick by ear).
+- The winch cable runs along the bed and over its rear edge instead of through the bed.
 - `swtow_selftest`: checks the installation (jobs, integrations and their accounts, database tables, a database round trip, clocks, texts, contract spots).
 - `config.lua` is checked on start; mistakes stop the start with each problem named.
 - Tests: offline suite on a simulated server (`scripts/test.sh`, also in CI) and in-game scenarios for development servers (`/swtow_test`, needs `setr sw_tow_dev 1`).

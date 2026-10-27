@@ -87,6 +87,17 @@ return {
         range = 7.0,                        -- Max distance from the tow arm to a vehicle to hook it.
     },
 
+    sounds = {                              -- Game sounds, played from the truck for everyone nearby.
+        enabled = true,                     -- false: silent. Set one line to false to mute only that sound.
+        -- { sound name, soundset }. Listen to the alternatives in game with /swtow_sounds [event].
+        rampsDown = { 'Enter_Car_Ramp_Deploy', 'DLC_GR_MOC_Enter_Exit_Sounds' },
+        rampsUp = { 'RAMP_UP', 'TRUCK_RAMP_DOWN' },
+        winch = { 'Move_U_D', 'CRANE_SOUNDS' },     -- Plays while the winch pulls or lets out.
+        secured = { 'Clamp', 'CRANE_SOUNDS' },       -- Straps on, vehicle secured on the bed.
+        hookOn = { 'Hook_Engage', 'DLC_IE_Steal_Cargobob_Sounds' },
+        hookOff = { 'Hook_Detach', 'DLC_IE_Steal_Cargobob_Sounds' },
+    },
+
     blockedClasses = {                      -- Vehicle classes that cannot be towed.
         [14] = true,                        -- Boats.
         [15] = true,                        -- Helicopters.

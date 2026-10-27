@@ -64,6 +64,7 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `police.maxFine`, `police.ordersPerHour` | 5000, 6 | Limits for officers |
 | `contracts.enabled` | true | NPC jobs when no player is calling |
 | `abandoned.minutes`, `abandoned.owned` | 30, false | When a left vehicle becomes a call; whether owned vehicles count |
+| `sounds` | game sounds on | Ramps, winch motor, straps and tow arm; each can be swapped or muted |
 | `ui` | right edge, orange | Shift panel side, height, size, accent colour, header label, logo |
 
 Discord logging: set `set sw_tow:webhook "https://discord.com/api/webhooks/..."` in `server.cfg`. Keep webhooks out of config files.
@@ -80,6 +81,7 @@ Texts live in `locales/en.json`, `de.json`, `ru.json`. The language follows `set
 | `/swtow_spots generate [cell]` | admins | Scans the map for roadside spots for NPC contracts and saves them to `data/spots.generated.lua`. One spot per cell, 250 m by default (100–1000). Takes a few minutes; stay in game |
 | `/swtow_spots show` / `hide` | admins | Shows every contract spot on the map: blue are bundled, orange generated |
 | `/swtow_coords` | everyone | Prints your position and heading as `vec4(...)` and copies it, for placing things in `config.lua` |
+| `/swtow_sounds [event]` | everyone | Plays the alternative game sounds for ramps, winch, straps and tow arm, to pick them for `config.sounds` |
 | `swtow_selftest` | console, admins | Checks the installation, see above. Results also go to `selftest.log` |
 
 Admin commands need the ace `command.swtow_spots` (the default Qbox recipe gives `group.admin` all commands). Generated spots are used after `restart sw_tow`, face along the road, and keep 150 m from each other and 120 m from the office and yards. Delete a line from the file to drop a spot, or the whole file to go back to the bundled list.
