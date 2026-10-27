@@ -308,6 +308,20 @@ local function ownedCarToYard(withCall)
     return { truck = truck, car = car, vehicleId = vehicleId, plate = plate, call = call, pickup = pickup }
 end
 
+---Waits for a truck state bag to read as wanted (the server's change arrives a moment later).
+local function bagIs(entity, key, predicate, timeout)
+    return waitFor(function() return predicate(Entity(entity).state[key]) end, timeout or 2000) == true
+end
+
+---Reads the panel until its title is the wanted text (it refreshes once a second).
+local function panelTitle(key)
+    local texts = waitFor(function()
+        local t = panel.probe()
+        return t and t.title == locale(key) and t or nil
+    end, 2500)
+    return texts ~= nil, texts or panel.probe()
+end
+
 local function garageState(vehicleId)
     return lib.callback.await('sw_tow:dev:garageState', false, vehicleId) or {}
 end
@@ -364,8 +378,11 @@ end)
 scenario('shift', 'Clock in, panel, trucks, clock out', function()
     expect(lib.callback.await('sw_tow:dev:prepare', false), 'the tow job and test money are given')
     Wait(1000)
+    if shift.onShift() then
+        lib.callback.await('sw_tow:dev:stopShift', false)
+        waitFor(function() return not shift.onShift() end, 2000)
+    end
     teleport(config.office.coords.xyz + vec3(25.0, 0.0, 0.0))
-    if shift.onShift() then shift.clockOut() end
     check(not shift.clockIn(), 'clocking in away from the counter is refused')
     teleport(config.office.coords.xyz, config.office.coords.w)
     Wait(1100)
@@ -436,14 +453,14 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
                 check(math.abs(offset.x) < 0.25 and turn < 4.0, case.label .. ': straight in the middle of the bed',
                     ('x %+.2f m, turned %.1f°'):format(offset.x, turn))
                 check(offset.z > 0.3, case.label .. ': up on the bed', ('z %+.2f m'):format(offset.z))
-                local winch = Entity(truck).state['sw_tow:winch']
-                check(winch and winch.phase == 'secured', case.label .. ': the server counts it as secured')
+                check(bagIs(truck, 'sw_tow:winch', function(v) return type(v) == 'table' and v.phase == 'secured' end),
+                    case.label .. ': the server counts it as secured')
                 ok, errorKey = tow.unload(truck)
                 check(ok, case.label .. ': unloaded', why(errorKey))
                 Wait(500)
                 check(standsOnGround(car), case.label .. ': stands on its wheels behind the truck',
                     ('height %.2f m, roll %.0f°'):format(GetEntityHeightAboveGround(car), GetEntityRoll(car)))
-                check(Entity(truck).state['sw_tow:cargo'] == nil, case.label .. ': the truck is empty again')
+                check(bagIs(truck, 'sw_tow:cargo', function(v) return v == nil end), case.label .. ': the truck is empty again')
             end
             remove(car)
         end
@@ -461,7 +478,8 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     if car and blocker then
         local ok, errorKey = tow.load(truck, car)
         check(not ok and errorKey == 'tow.path_blocked', 'something in the way: refused before pulling', why(errorKey))
-        check(not IsEntityAttached(car) and not Entity(truck).state['sw_tow:cargo'], 'nothing is left half-loaded')
+        check(not IsEntityAttached(car) and bagIs(truck, 'sw_tow:cargo', function(v) return v == nil end),
+            'nothing is left half-loaded')
     end
     remove(car)
     remove(blocker)
@@ -471,11 +489,18 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     Wait(1600) -- lowering is rate limited
     check(tow.toggleRamps(truck) and flatbed.rampsDown(truck), 'ramps go down by hand')
     local min = GetModelDimensions(GetEntityModel(truck))
-    local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, (min.y + config.flatbed.bedFrontY) / 2, 2.0)
-    local driven = spawnVehicle('asea', vec4(onTop.x, onTop.y, onTop.z, GetEntityHeading(truck)), true)
-    if driven then
-        Wait(1500)
-        check(flatbed.isOnBed(truck, driven), 'a car standing on the bed is recognised')
+    local driven = spawnVehicle('asea', behind(truck, 'asea', 3.0))
+    if driven and control(driven) then
+        -- As if driven up the ramps: dropped from just above the middle of the bed, then settled.
+        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, (min.y + config.flatbed.bedFrontY) / 2, 1.6)
+        SetEntityCoords(driven, onTop.x, onTop.y, onTop.z, false, false, false, false)
+        SetEntityHeading(driven, GetEntityHeading(truck))
+        Wait(500)
+        waitFor(function() return GetEntitySpeed(driven) < 0.05 end, 4000)
+        local c = GetEntityCoords(driven)
+        local p = GetOffsetFromEntityGivenWorldCoords(truck, c.x, c.y, c.z)
+        check(flatbed.isOnBed(truck, driven), 'a car standing on the bed is recognised',
+            ('truck-space x %+.2f, y %+.2f, z %+.2f'):format(p.x, p.y, p.z))
         local ok, errorKey = tow.secureInPlace(truck, driven)
         check(ok and IsEntityAttachedToEntity(driven, truck), 'it is strapped where it stands', why(errorKey))
         check(not flatbed.rampsDown(truck), 'the ramps go up after strapping')
@@ -491,11 +516,12 @@ scenario('hook', 'Tow truck: hook and unhook', function()
     local ok, errorKey = tow.load(truck, car)
     check(ok, 'hooked to the tow arm', why(errorKey))
     check(IsVehicleAttachedToTowTruck(truck, car), 'the game holds it on the arm')
+    check(bagIs(truck, 'sw_tow:cargo', function(v) return v ~= nil end), 'the server counts it as cargo')
     ok, errorKey = tow.unload(truck)
     check(ok, 'unhooked', why(errorKey))
     Wait(1000)
     check(not IsVehicleAttachedToTowTruck(truck, car), 'it is off the arm')
-    check(Entity(truck).state['sw_tow:cargo'] == nil, 'the truck is empty again')
+    check(bagIs(truck, 'sw_tow:cargo', function(v) return v == nil end), 'the truck is empty again')
     remove(car)
 
     local police = spawnVehicle('police', behind(truck, 'police', 1.0))
@@ -528,8 +554,8 @@ scenario('impound', 'Player call: tow, pay, impound and release at the counter',
     end)
 
     if config.ui.enabled then
-        local texts = panel.probe()
-        check(texts and texts.title == locale('panel.title_player'), 'the panel shows the call', texts and texts.title)
+        local shown, texts = panelTitle('panel.title_player')
+        check(shown, 'the panel shows the call', texts and texts.title)
         check(texts and texts.cargo == t.plate, 'the panel shows the cargo', texts and texts.cargo)
         check(texts and texts.timer ~= nil, 'the panel shows the delivery timer')
     end
@@ -542,6 +568,7 @@ scenario('impound', 'Player call: tow, pay, impound and release at the counter',
     local ok, errorKey = tow.deliver(t.truck)
     check(not ok and errorKey == 'impound.too_fast', 'an instant trip to the yard is refused as too fast', why(errorKey))
     lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
+    Wait(600) -- hand-overs are rate limited
 
     local before = money()
     ok, errorKey = tow.deliver(t.truck)
@@ -627,8 +654,8 @@ scenario('contract', 'NPC contract: appears near the spot, looks broken, goes aw
     local call = expect(findCall(function(c) return c.id == id end), 'it shows in the call list')
     expect(calls.accept(call), 'it is accepted')
     if config.ui.enabled then
-        local texts = panel.probe()
-        check(texts and texts.title == locale('panel.title_contract'), 'the panel shows the contract', texts and texts.title)
+        local shown, texts = panelTitle('panel.title_contract')
+        check(shown, 'the panel shows the contract', texts and texts.title)
     end
     local spotVec = vec3(spot.x, spot.y, spot.z)
     teleport(spotVec + vec3(0.0, 0.0, 30.0))
@@ -656,6 +683,7 @@ scenario('abandoned', 'Abandoned vehicle: becomes a call, closes when driven awa
     if not config.abandoned.enabled then return record('SKIP', 'abandoned vehicles are off in config.lua') end
     local forward = vec3(-math.sin(math.rad(site.w)), math.cos(math.rad(site.w)), 0.0)
     local at = site.xyz + forward * 6.0
+    teleport(site.xyz, site.w) -- the server can only create a vehicle near a player
     local car = expect(spawnVehicle('asea', vec4(at.x, at.y, at.z, site.w)), 'a test vehicle is left behind')
     teleport(site.xyz - forward * (config.abandoned.playerRadius + 20.0))
     check(lib.callback.await('sw_tow:dev:abandon', false, VehToNet(car)), 'it becomes a call when nobody is near')
