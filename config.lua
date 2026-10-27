@@ -125,6 +125,7 @@ return {
         interval = 90,                      -- Seconds between checks for a new contract.
         minDistance = 400.0,                -- Contract spot distance from the worker, min and max.
         maxDistance = 3500.0,
+        spawnRadius = 150.0,                -- The vehicle appears once the worker is this close to the spot.
         models = {                          -- Vehicles that break down (lore-friendly base game models).
             'asea', 'asterope', 'emperor', 'fugitive', 'ingot', 'intruder', 'premier', 'primo',
             'stanier', 'stratum', 'washington', 'blista', 'dilettante', 'panto', 'prairie', 'rhapsody',

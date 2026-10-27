@@ -38,22 +38,34 @@ local function pickSpot(workers)
     return candidates[math.random(#candidates)]
 end
 
-local function onAccept(call)
-    if call.vehicle and DoesEntityExist(call.vehicle) then return true end
+---Accepted contracts whose vehicle is not spawned yet. A server-spawned vehicle only gets its plate
+---(and an owner) once a client streams it in, so spawning it at a spot far from every player fails
+---with "vehicle plate never set". It is spawned when the worker gets close instead.
+---@type table<integer, SwCall>
+local pending = {}
+local spawning = {}
+
+local function spawnVehicleFor(call)
     local spot = spots[call.spot]
     if lib.getClosestVehicle(spot, 4.0, false) then
         log.info(nil, 'contract', ('spot %d is blocked'):format(call.spot))
-        return false
+        return
     end
     local heading = spotlist.headings[call.spot] or math.random(0, 359) + 0.0
     local _, vehicle = framework.spawnVehicle(call.model, vec4(spot.x, spot.y, spot.z, heading), { plate = call.plate })
     SetVehicleDoorsLocked(vehicle, 2)
     Entity(vehicle).state:set('sw_tow:contract', call.id, true)
     call.vehicle = vehicle
+end
+
+local function onAccept(call)
+    if call.vehicle and DoesEntityExist(call.vehicle) then return true end
+    pending[call.id] = call
     return true
 end
 
 local function onClose(call, delivered)
+    pending[call.id] = nil
     busySpots[call.spot] = nil
     if not delivered and call.vehicle and DoesEntityExist(call.vehicle)
         and not Entity(call.vehicle).state['sw_tow:towedBy'] then
@@ -83,6 +95,26 @@ local function createContract()
 end
 
 if cfg.enabled and #spots > 0 then
+    CreateThread(function()
+        while true do
+            Wait(1000)
+            for id, call in pairs(pending) do
+                local ped = call.status == 'accepted' and call.worker and GetPlayerPed(call.worker) or 0
+                if call.vehicle or call.status ~= 'accepted' then
+                    pending[id] = nil
+                elseif ped ~= 0 and not spawning[id]
+                    and #(GetEntityCoords(ped) - spots[call.spot]) <= cfg.spawnRadius then
+                    spawning[id] = true
+                    CreateThread(function()
+                        local ok, err = pcall(spawnVehicleFor, call)
+                        if not ok then lib.print.error(err) end
+                        spawning[id] = nil
+                    end)
+                end
+            end
+        end
+    end)
+
     CreateThread(function()
         while true do
             Wait(cfg.interval * 1000)

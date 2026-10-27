@@ -1,6 +1,7 @@
 ---The workers' call list (ox_lib context menu until the panel ships) and the route to an accepted call.
 local config = require 'config'
 local notify = require 'client.notify'
+local util = require 'shared.util'
 local shift = require 'client.shift'
 
 local calls = {}
@@ -21,23 +22,133 @@ local typeIcons = {
     abandoned = 'hourglass-half',
 }
 
-local function clearRoute()
+---What the route blip points at: 'call' (the vehicle to pick up) or 'yard' (where to hand it over).
+---@type 'call'|'yard'?
+local routeTarget
+
+local function removeBlip()
     if routeBlip and DoesBlipExist(routeBlip) then RemoveBlip(routeBlip) end
-    routeBlip, activeCallId, activeCall = nil, nil, nil
+    routeBlip, routeTarget = nil, nil
+end
+
+local function clearRoute()
+    removeBlip()
+    activeCallId, activeCall = nil, nil
+end
+
+---@param coords vector3
+---@param sprite integer
+---@param label string
+local function drawRoute(coords, sprite, label)
+    removeBlip()
+    routeBlip = AddBlipForCoord(coords.x, coords.y, coords.z)
+    SetBlipSprite(routeBlip, sprite)
+    SetBlipColour(routeBlip, 47)
+    SetBlipAsShortRange(routeBlip, false)
+    SetBlipRoute(routeBlip, true)
+    SetBlipRouteColour(routeBlip, 47)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(label)
+    EndTextCommandSetBlipName(routeBlip)
 end
 
 local function setRoute(id, coords)
     clearRoute()
     activeCallId = id
-    routeBlip = AddBlipForCoord(coords.x, coords.y, coords.z)
-    SetBlipSprite(routeBlip, 68)
-    SetBlipColour(routeBlip, 47)
-    SetBlipRoute(routeBlip, true)
-    SetBlipRouteColour(routeBlip, 47)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentSubstringPlayerName(locale('calls.blip'))
-    EndTextCommandSetBlipName(routeBlip)
+    drawRoute(coords, 68, locale('calls.blip'))
+    routeTarget = 'call'
 end
+
+---@param from vector3
+---@return table? yard
+local function nearestYard(from)
+    local best, bestDistance
+    for _, yard in pairs(config.yards) do
+        local distance = #(from - yard.zone.coords)
+        if not bestDistance or distance < bestDistance then best, bestDistance = yard, distance end
+    end
+    return best
+end
+
+---Hand-over zone of the yard the route leads to, drawn on the ground while a vehicle is loaded.
+---@type table?
+local drawnZone
+
+CreateThread(function()
+    local hinted = false
+    while true do
+        local wait = 500
+        local zone = routeTarget == 'yard' and drawnZone or nil
+        if zone then
+            local origin = GetEntityCoords(cache.ped)
+            if #(origin - zone.coords) < 200.0 then
+                wait = 0
+                local rad = math.rad(zone.rotation or 0.0)
+                local c, s = math.cos(rad), math.sin(rad)
+                local hx, hy = zone.size.x / 2, zone.size.y / 2
+                local z = zone.coords.z - 0.8
+                local points = {}
+                for i, sign in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
+                    local lx, ly = sign[1] * hx, sign[2] * hy
+                    points[i] = vec3(zone.coords.x + lx * c - ly * s, zone.coords.y + lx * s + ly * c, z)
+                end
+                for i = 1, 4 do
+                    local a, b = points[i], points[i % 4 + 1]
+                    DrawLine(a.x, a.y, a.z, b.x, b.y, b.z, 255, 122, 46, 255)
+                    DrawLine(a.x, a.y, a.z + 1.5, b.x, b.y, b.z + 1.5, 255, 122, 46, 255)
+                    DrawLine(a.x, a.y, a.z, a.x, a.y, a.z + 1.5, 255, 122, 46, 255)
+                    DrawPoly(a.x, a.y, a.z + 1.5, b.x, b.y, b.z + 1.5, a.x, a.y, a.z, 255, 122, 46, 60)
+                    DrawPoly(b.x, b.y, b.z, a.x, a.y, a.z, b.x, b.y, b.z + 1.5, 255, 122, 46, 60)
+                end
+                DrawMarker(1, zone.coords.x, zone.coords.y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    zone.size.x, zone.size.y, 0.4, 255, 122, 46, 40, false, false, 2, false, nil, nil, false)
+
+                local truck = shift.truck()
+                local inside = truck ~= nil and util.inZone(GetEntityCoords(truck), zone)
+                if inside and not hinted then
+                    lib.showTextUI(locale('tow.yard_hint'))
+                    hinted = true
+                elseif not inside and hinted then
+                    lib.hideTextUI()
+                    hinted = false
+                end
+            end
+        end
+        if hinted and (wait > 0 or not zone) then
+            lib.hideTextUI()
+            hinted = false
+        end
+        Wait(wait)
+    end
+end)
+
+-- Once the vehicle is on the truck the route leads to the nearest yard; if it comes off again
+-- before delivery, back to the call.
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if shift.onShift() then
+            local truck = shift.truck()
+            local loaded = truck ~= nil and Entity(truck).state['sw_tow:cargo'] ~= nil
+            if loaded and routeTarget ~= 'yard' then
+                local yard = nearestYard(GetEntityCoords(truck))
+                if yard then
+                    drawRoute(yard.zone.coords, yard.blip and yard.blip.sprite or 524, yard.label)
+                    routeTarget = 'yard'
+                    drawnZone = yard.zone
+                    notify(locale('calls.route_yard'), 'success')
+                end
+            elseif not loaded and routeTarget == 'yard' then
+                if activeCall then
+                    drawRoute(activeCall.coords, 68, locale('calls.blip'))
+                    routeTarget = 'call'
+                else
+                    removeBlip()
+                end
+            end
+        end
+    end
+end)
 
 local function streetAt(coords)
     local street = GetStreetNameAtCoord(coords.x, coords.y, coords.z)

@@ -135,6 +135,14 @@ local function unload(truck)
         else
             DetachVehicleFromTowTruck(truck, target)
         end
+        -- Unloading inside a yard is the hand-over.
+        local yardKey = impound.yardAt(GetEntityCoords(truck))
+        if yardKey then
+            local ok, errorKey = lib.callback.await('sw_tow:server:deliver', false, truckNet, yardKey, true)
+            if ok then return true end
+            lib.callback.await('sw_tow:server:detach', false, truckNet)
+            return false, errorKey or 'common.failed'
+        end
         lib.callback.await('sw_tow:server:detach', false, truckNet)
         return true
     end)

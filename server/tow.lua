@@ -18,6 +18,7 @@ local tow = {}
 ---@field target integer entity
 ---@field method 'flatbed'|'hook'
 ---@field secured boolean
+---@field lowering boolean? the worker is unloading it; inside a yard that hands it over
 ---@field pickup vector3
 ---@field pickedAt integer os.time()
 
@@ -122,6 +123,7 @@ lib.callback.register('sw_tow:server:secured', function(src, truckNet)
         return false
     end
     record.secured = true
+    record.lowering = nil
     Entity(truck).state:set('sw_tow:winch', { target = NetworkGetNetworkIdFromEntity(record.target), phase = 'secured' }, true)
     return true
 end)
@@ -134,6 +136,7 @@ lib.callback.register('sw_tow:server:lowering', function(src, truckNet)
         -- Not secured while it comes down: no delivery mid-unload, and it can be strapped again if
         -- it does not come down.
         record.secured = false
+        record.lowering = true
         Entity(truck).state:set('sw_tow:winch', { target = NetworkGetNetworkIdFromEntity(record.target), phase = 'lowering' }, true)
     end
     return true

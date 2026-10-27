@@ -121,7 +121,8 @@ local function pay(payments, distance, callType)
     end
 end
 
-local function deliver(src, truckNet, yardKey)
+---@param unloaded boolean? the worker has just unloaded the cargo inside the yard
+local function deliver(src, truckNet, yardKey, unloaded)
     local current = shift.get(src)
     local truck = guard.vehicle(truckNet)
     local yard = type(yardKey) == 'string' and config.yards[yardKey]
@@ -131,9 +132,12 @@ local function deliver(src, truckNet, yardKey)
     end
 
     local record = tow.get(truck)
-    if not record or not record.secured then return false, 'impound.no_cargo' end
+    unloaded = unloaded == true and record and record.lowering == true
+    if not record or not (record.secured or unloaded) then return false, 'impound.no_cargo' end
     local target = record.target
-    if #(GetEntityCoords(target) - GetEntityCoords(truck)) > 10.0 then return false, 'impound.no_cargo' end
+    if #(GetEntityCoords(target) - GetEntityCoords(truck)) > (unloaded and 25.0 or 10.0) then
+        return false, 'impound.no_cargo'
+    end
 
     -- A truck cannot be faster than config.payout.maxSpeed on average: stops teleport deliveries.
     local distance = #(record.pickup - yard.zone.coords)
@@ -204,10 +208,10 @@ local function deliver(src, truckNet, yardKey)
     return true
 end
 
-lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey)
+lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey, unloaded)
     if delivering[src] or not guard.rate(src, 'deliver') then return false end
     delivering[src] = true
-    local ok, result, errorKey = pcall(deliver, src, truckNet, yardKey)
+    local ok, result, errorKey = pcall(deliver, src, truckNet, yardKey, unloaded)
     delivering[src] = nil
     if not ok then
         lib.print.error(result)
