@@ -59,7 +59,9 @@ end
 ---@field hold_until integer? unix seconds
 ---@field stored_at integer unix seconds
 
-local COLUMNS = [[id, yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge, police_hold,
+-- oxmysql returns TINYINT(1) as a boolean; the cast keeps police_hold the number 0 or 1.
+local COLUMNS = [[id, yard, plate, vehicle_id, owner, model, reason, note, fine, tow_charge,
+    CAST(police_hold AS UNSIGNED) AS police_hold,
     UNIX_TIMESTAMP(hold_until) AS hold_until, UNIX_TIMESTAMP(stored_at) AS stored_at]]
 
 ---@param record table
