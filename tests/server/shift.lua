@@ -1,0 +1,150 @@
+local test = require 'test'
+local flow = require 'flow'
+local World = require 'world'
+local vector = require 'vector'
+
+test.suite('server › shift and company trucks')
+
+test.case('only players with the tow job can clock in', function()
+    local w = newWorld()
+    local src = w:addPlayer({ job = 'police', jobType = 'leo' })
+    test.refused(flow.clockIn(w, src))
+    test.falsy(w.env.Player(src).state['sw_tow:shift'], 'no shift state')
+    w:assertNoErrors()
+end)
+
+test.case('clocking in works only at the office', function()
+    local w = newWorld()
+    local src = w:addPlayer({ job = 'tow' })
+    w:teleport(src, World.OFFICE + vector.vec3(20, 0, 0))
+    test.refused(w:call('sw_tow:server:clockIn', src))
+    w:advance(1)
+    test.accepted(flow.clockIn(w, src))
+    test.eq(w.env.Player(src).state['sw_tow:shift'], true, 'shift state bag')
+    test.eq(w.players[src].job.onDuty, true, 'on duty')
+    w:assertNoErrors()
+end)
+
+test.case('clocking in twice is refused', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    w:advance(1)
+    test.refused(flow.clockIn(w, src))
+end)
+
+test.case('a company truck has a plate with the prefix, company state bags and keys', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    local e = w:entity(truck)
+    test.eq(e.modelName, 'flatbed')
+    test.truthy(e.plate:match('^SWT%d%d%d%d$'), 'plate ' .. e.plate)
+    test.eq(w.env.Entity(truck).state['sw_tow:company'], w.players[src].citizenid)
+    test.eq(w.env.Entity(truck).state['sw_tow:method'], 'flatbed')
+    test.eq(w.keysGiven[1].entity, truck, 'keys given')
+    w:assertNoErrors()
+end)
+
+test.case('one truck per worker, and not while the spawn spot is taken', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    flow.truck(w, src, 1)
+    w:advance(6)
+    test.refusedWith('garage.already_out', w:call('sw_tow:server:takeTruck', src, 2))
+
+    local other = flow.worker(w)
+    test.refusedWith('garage.spot_busy', w:call('sw_tow:server:takeTruck', other, 1))
+
+    -- A player sitting in a car on the spot blocks it too.
+    local w2 = newWorld()
+    local worker = flow.worker(w2)
+    local car = w2:createVehicle({ model = 'asea', coords = World.TRUCK_SPAWN })
+    local sitter = w2:addPlayer({})
+    w2:enterVehicle(sitter, car)
+    test.refusedWith('garage.spot_busy', w2:call('sw_tow:server:takeTruck', worker, 1))
+end)
+
+test.case('an invalid truck index is refused without an error', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    test.refused(w:call('sw_tow:server:takeTruck', src, 99))
+    w:advance(6)
+    test.refused(w:call('sw_tow:server:takeTruck', src, 'flatbed'))
+    w:assertNoErrors()
+end)
+
+test.case('a failed spawn leaves the worker without a truck and can be retried', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    w.failNextSpawn = true
+    test.refused(w:call('sw_tow:server:takeTruck', src, 1))
+    w:advance(6)
+    flow.truck(w, src, 1)
+end)
+
+test.case('returning a truck: only near the spawn and only empty', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    w:move(truck, World.FAR)
+    test.refusedWith('garage.too_far', w:call('sw_tow:server:returnTruck', src))
+
+    local car = w:createVehicle({ model = 'asea', coords = World.FAR })
+    test.accepted(flow.load(w, src, truck, car))
+    flow.drive(w, src, truck, World.TRUCK_SPAWN)
+    test.refusedWith('garage.has_cargo', w:call('sw_tow:server:returnTruck', src))
+
+    test.accepted(w:call('sw_tow:server:detach', src, w:entity(truck).net))
+    test.accepted(w:call('sw_tow:server:returnTruck', src))
+    test.falsy(w:exists(truck), 'truck deleted')
+    w:assertNoErrors()
+end)
+
+test.case('clocking out at the office ends the shift, removes the truck and goes off duty', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    w:teleport(src, World.FAR)
+    test.refused(w:call('sw_tow:server:clockOut', src))
+    w:teleport(src, World.OFFICE)
+    test.accepted(w:call('sw_tow:server:clockOut', src))
+    test.falsy(w.env.Player(src).state['sw_tow:shift'])
+    test.falsy(w:exists(truck), 'truck deleted')
+    test.eq(w.players[src].job.onDuty, false, 'off duty')
+end)
+
+test.case('a job change, logout or disconnect ends the shift and removes the truck', function()
+    local w = newWorld()
+    local a, b, c = flow.worker(w), flow.worker(w), flow.worker(w)
+    local trucks = {}
+    for i, src in ipairs({ a, b, c }) do
+        trucks[i] = flow.truck(w, src, 1)
+        w:move(trucks[i], World.FAR + vector.vec3(i * 20, 0, 0))
+    end
+    w:setJob(a, 'police', 'leo')
+    w:logout(b)
+    w:drop(c)
+    for i, src in ipairs({ a, b }) do
+        test.falsy(w.env.Player(src).state['sw_tow:shift'], 'shift ended for player ' .. i)
+    end
+    for i = 1, 3 do test.falsy(w:exists(trucks[i]), 'truck ' .. i .. ' deleted') end
+    w:assertNoErrors()
+end)
+
+test.case('a truck destroyed by the game can be replaced', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    w:removeEntity(truck)
+    w:advance(6)
+    flow.truck(w, src, 1)
+end)
+
+test.case('stopping the resource removes every company truck', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    w:trigger('onResourceStop', nil, 'sw_tow')
+    test.falsy(w:exists(truck))
+    test.falsy(w.env.Player(src).state['sw_tow:shift'])
+end)

@@ -82,6 +82,9 @@ function bridge.removeMoney(src, account, amount, reason)
     return p ~= nil and p.Functions.RemoveMoney(account, amount, reason) == true
 end
 
+-- CreateVehicleServerSetter needs the vehicle type; the class tells it apart for the base game.
+local TYPE_BY_CLASS = { [8] = 'bike', [13] = 'bike', [14] = 'boat', [15] = 'heli', [16] = 'plane', [21] = 'train' }
+
 ---Creates a networked vehicle on the server. Throws on failure.
 ---Body mods and colours cannot be set on the server, so the entity owner applies `props`.
 ---@param model string|integer
@@ -89,8 +92,9 @@ end
 ---@param props? table ox_lib vehicle properties
 ---@return integer netId, integer entity
 function bridge.spawnVehicle(model, coords, props)
-    local hash = type(model) == 'string' and joaat(model) or model
-    local entity = CreateVehicleServerSetter(hash, 'automobile', coords.x, coords.y, coords.z, coords.w)
+    local hash = (type(model) == 'string' and joaat(model) or model) --[[@as integer]]
+    local vehicleType = TYPE_BY_CLASS[bridge.getVehicleClass(hash) or -1] or 'automobile'
+    local entity = CreateVehicleServerSetter(hash, vehicleType, coords.x, coords.y, coords.z, coords.w)
     local deadline = GetGameTimer() + 5000
     while not entity or entity == 0 or not DoesEntityExist(entity) do
         if GetGameTimer() > deadline then

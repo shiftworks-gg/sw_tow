@@ -98,6 +98,13 @@ local function load(truck, target)
         SetVehicleTowTruckArmPosition(truck, 1.0)
         AttachVehicleToTowTruck(truck, target, false, 0.0, 0.0, 0.0)
         SetVehicleTowTruckArmPosition(truck, 0.0)
+        -- The arm only catches a vehicle close behind it; the server must not count a miss as cargo.
+        local deadline = GetGameTimer() + 1000
+        while not IsVehicleAttachedToTowTruck(truck, target) and GetGameTimer() < deadline do Wait(50) end
+        if not IsVehicleAttachedToTowTruck(truck, target) then
+            lib.callback.await('sw_tow:server:detach', false, truckNet)
+            return false, 'tow.hook_missed'
+        end
         return true
     end)
 end

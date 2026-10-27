@@ -1269,7 +1269,11 @@ local function showHint(text)
     if text then lib.showTextUI(text, { position = 'right-center' }) else lib.hideTextUI() end
 end
 
+local guideRunning = false
+
 local function runGuide()
+    if guideRunning then return end
+    guideRunning = true
     local shift = require 'client.shift'
     local modelLoaded = false
     local truck, target, strips, result
@@ -1306,6 +1310,7 @@ local function runGuide()
     end
     showHint(nil)
     if modelLoaded then SetModelAsNoLongerNeeded(joaat(cfg.ramp.model)) end
+    guideRunning = false
 end
 
 AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)

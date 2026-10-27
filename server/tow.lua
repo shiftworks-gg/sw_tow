@@ -144,7 +144,8 @@ end)
 
 ---Flatbed ramps up or down. Every client builds its own ramps from the state bag.
 lib.callback.register('sw_tow:server:ramps', function(src, truckNet, down)
-    if not guard.rate(src, 'ramps') then return false end
+    -- Only lowering is limited: a failed load or unload raises the ramps again at once.
+    if down and not guard.rate(src, 'ramps') then return false end
     local truck = ownTruck(src, truckNet)
     if not truck or Entity(truck).state['sw_tow:method'] ~= 'flatbed' then return false end
     Entity(truck).state:set('sw_tow:ramps', down == true or nil, true)

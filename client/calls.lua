@@ -74,81 +74,91 @@ end
 ---@type table?
 local drawnZone
 
-CreateThread(function()
-    local hinted = false
-    while true do
-        local wait = 500
+local ZONE_COLOR = { 255, 122, 46 }
+
+---Outline and walls of a box zone, so the worker sees where to stop the truck.
+---@param zone { coords: vector3, size: vector3, rotation?: number }
+local function drawZone(zone)
+    local r, g, b = ZONE_COLOR[1], ZONE_COLOR[2], ZONE_COLOR[3]
+    local rad = math.rad(zone.rotation or 0.0)
+    local c, s = math.cos(rad), math.sin(rad)
+    local hx, hy = zone.size.x / 2, zone.size.y / 2
+    local z = zone.coords.z - 0.8
+    local points = {}
+    for i, sign in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
+        local lx, ly = sign[1] * hx, sign[2] * hy
+        points[i] = vec3(zone.coords.x + lx * c - ly * s, zone.coords.y + lx * s + ly * c, z)
+    end
+    for i = 1, 4 do
+        local a, p = points[i], points[i % 4 + 1]
+        DrawLine(a.x, a.y, a.z, p.x, p.y, p.z, r, g, b, 255)
+        DrawLine(a.x, a.y, a.z + 1.5, p.x, p.y, p.z + 1.5, r, g, b, 255)
+        DrawLine(a.x, a.y, a.z, a.x, a.y, a.z + 1.5, r, g, b, 255)
+        DrawPoly(a.x, a.y, a.z + 1.5, p.x, p.y, p.z + 1.5, a.x, a.y, a.z, r, g, b, 60)
+        DrawPoly(p.x, p.y, p.z, a.x, a.y, a.z, p.x, p.y, p.z + 1.5, r, g, b, 60)
+    end
+    local size = zone.size
+    ---@diagnostic disable-next-line: param-type-mismatch -- no texture dictionary: the native takes nil
+    DrawMarker(1, zone.coords.x, zone.coords.y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, size.x, size.y, 0.4, r, g, b, 40, false, false, 2, false, nil, nil, false)
+end
+
+---Once the vehicle is on the truck the route leads to the nearest yard; if it comes off again
+---before delivery, back to the call.
+local function updateRoute()
+    local truck = shift.truck()
+    local loaded = truck ~= nil and Entity(truck).state['sw_tow:cargo'] ~= nil
+    if truck and loaded and routeTarget ~= 'yard' then
+        local yard = nearestYard(GetEntityCoords(truck))
+        if yard then
+            drawRoute(yard.zone.coords, yard.blip and yard.blip.sprite or 524, yard.label)
+            routeTarget = 'yard'
+            drawnZone = yard.zone
+            notify(locale('calls.route_yard'), 'success')
+        end
+    elseif not loaded and routeTarget == 'yard' then
+        -- Unloaded inside the yard is a hand-over: the call is closing, callClosed clears the route.
+        local inYard = false
+        if truck and drawnZone then inYard = util.inZone(GetEntityCoords(truck), drawnZone) end
+        if activeCall and not inYard then
+            drawRoute(activeCall.coords, 68, locale('calls.blip'))
+            routeTarget = 'call'
+        else
+            removeBlip()
+        end
+    end
+end
+
+local routing = false
+
+---Runs only while on shift: keeps the route up to date and draws the hand-over zone when the
+---worker is within 200 m of it with a loaded truck.
+local function runRoute()
+    if routing then return end
+    routing = true
+    local hinted, nextCheck = false, 0
+    while shift.onShift() do
+        local now = GetGameTimer()
+        if now >= nextCheck then
+            nextCheck = now + 1000
+            updateRoute()
+        end
         local zone = routeTarget == 'yard' and drawnZone or nil
-        if zone then
-            local origin = GetEntityCoords(cache.ped)
-            if #(origin - zone.coords) < 200.0 then
-                wait = 0
-                local rad = math.rad(zone.rotation or 0.0)
-                local c, s = math.cos(rad), math.sin(rad)
-                local hx, hy = zone.size.x / 2, zone.size.y / 2
-                local z = zone.coords.z - 0.8
-                local points = {}
-                for i, sign in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
-                    local lx, ly = sign[1] * hx, sign[2] * hy
-                    points[i] = vec3(zone.coords.x + lx * c - ly * s, zone.coords.y + lx * s + ly * c, z)
-                end
-                for i = 1, 4 do
-                    local a, b = points[i], points[i % 4 + 1]
-                    DrawLine(a.x, a.y, a.z, b.x, b.y, b.z, 255, 122, 46, 255)
-                    DrawLine(a.x, a.y, a.z + 1.5, b.x, b.y, b.z + 1.5, 255, 122, 46, 255)
-                    DrawLine(a.x, a.y, a.z, a.x, a.y, a.z + 1.5, 255, 122, 46, 255)
-                    DrawPoly(a.x, a.y, a.z + 1.5, b.x, b.y, b.z + 1.5, a.x, a.y, a.z, 255, 122, 46, 60)
-                    DrawPoly(b.x, b.y, b.z, a.x, a.y, a.z, b.x, b.y, b.z + 1.5, 255, 122, 46, 60)
-                end
-                DrawMarker(1, zone.coords.x, zone.coords.y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                    zone.size.x, zone.size.y, 0.4, 255, 122, 46, 40, false, false, 2, false, nil, nil, false)
-
-                local truck = shift.truck()
-                local inside = truck ~= nil and util.inZone(GetEntityCoords(truck), zone)
-                if inside and not hinted then
-                    lib.showTextUI(locale('tow.yard_hint'))
-                    hinted = true
-                elseif not inside and hinted then
-                    lib.hideTextUI()
-                    hinted = false
-                end
-            end
-        end
-        if hinted and (wait > 0 or not zone) then
-            lib.hideTextUI()
-            hinted = false
-        end
-        Wait(wait)
-    end
-end)
-
--- Once the vehicle is on the truck the route leads to the nearest yard; if it comes off again
--- before delivery, back to the call.
-CreateThread(function()
-    while true do
-        Wait(1000)
-        if shift.onShift() then
+        local near = zone ~= nil and #(GetEntityCoords(cache.ped) - zone.coords) < 200.0
+        local inside = false
+        if zone and near then
+            drawZone(zone)
             local truck = shift.truck()
-            local loaded = truck ~= nil and Entity(truck).state['sw_tow:cargo'] ~= nil
-            if loaded and routeTarget ~= 'yard' then
-                local yard = nearestYard(GetEntityCoords(truck))
-                if yard then
-                    drawRoute(yard.zone.coords, yard.blip and yard.blip.sprite or 524, yard.label)
-                    routeTarget = 'yard'
-                    drawnZone = yard.zone
-                    notify(locale('calls.route_yard'), 'success')
-                end
-            elseif not loaded and routeTarget == 'yard' then
-                if activeCall then
-                    drawRoute(activeCall.coords, 68, locale('calls.blip'))
-                    routeTarget = 'call'
-                else
-                    removeBlip()
-                end
-            end
+            inside = truck ~= nil and util.inZone(GetEntityCoords(truck), zone)
         end
+        if inside ~= hinted then
+            if inside then lib.showTextUI(locale('tow.yard_hint')) else lib.hideTextUI() end
+            hinted = inside
+        end
+        Wait(near and 0 or 500)
     end
-end)
+    if hinted then lib.hideTextUI() end
+    routing = false
+end
 
 local function streetAt(coords)
     local street = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
@@ -180,10 +190,12 @@ local function openList()
             icon = call.mine and 'location-dot' or (typeIcons[call.type] or 'phone'),
             onSelect = function()
                 if call.mine then
-                    local ok = lib.callback.await('sw_tow:server:dropCall', false, call.id)
+                    local ok, errorKey = lib.callback.await('sw_tow:server:dropCall', false, call.id)
                     if ok then
                         clearRoute()
                         notify(locale('calls.dropped'), 'inform')
+                    else
+                        notify(locale(errorKey or 'common.failed'), 'error')
                     end
                     return
                 end
@@ -226,7 +238,7 @@ RegisterNetEvent('sw_tow:client:callsChanged', function()
 end)
 
 AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)
-    if not value then clearRoute() end
+    if value then CreateThread(runRoute) else clearRoute() end
 end)
 
 return calls

@@ -67,7 +67,7 @@ end
 ---@return vector4?
 local function freeReleaseSpot(yard)
     for _, spot in ipairs(yard.releaseSpots) do
-        if not lib.getClosestVehicle(spot.xyz, 3.0, false) then return spot end
+        if not lib.getClosestVehicle(spot.xyz, 3.0, true) then return spot end
     end
 end
 

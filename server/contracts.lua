@@ -47,7 +47,7 @@ local spawning = {}
 
 local function spawnVehicleFor(call)
     local spot = spots[call.spot]
-    if lib.getClosestVehicle(spot, 4.0, false) then
+    if lib.getClosestVehicle(spot, 4.0, true) then
         log.info(nil, 'contract', ('spot %d is blocked'):format(call.spot))
         return
     end

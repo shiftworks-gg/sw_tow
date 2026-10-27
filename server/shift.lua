@@ -120,7 +120,7 @@ lib.callback.register('sw_tow:server:takeTruck', function(src, index)
         log.warn(src, 'take_truck', 'not at the office')
         return false
     end
-    if lib.getClosestVehicle(config.garage.spawn.xyz, 3.0, false) then return false, 'garage.spot_busy' end
+    if lib.getClosestVehicle(config.garage.spawn.xyz, 3.0, true) then return false, 'garage.spot_busy' end
 
     local plate = freePlate()
     if not plate then return false end

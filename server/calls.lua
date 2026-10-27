@@ -28,6 +28,8 @@ local calls = {}
 ---@field hold boolean? police orders
 ---@field holdHours integer? police orders, 0 = until lifted
 ---@field payFactor number? multiplier on delivery pay
+---@field spot integer? contracts: index of the roadside spot
+---@field model string? contracts: vehicle model to spawn
 ---@field onAccept fun(call: SwCall, src: integer): boolean? prepares the vehicle; false refuses
 ---@field onClose fun(call: SwCall, delivered: boolean)?
 
@@ -221,6 +223,8 @@ end)
 lib.callback.register('sw_tow:server:dropCall', function(src, id)
     local call = type(id) == 'number' and active[id]
     if not call or call.worker ~= src then return false end
+    -- Without the call the loaded vehicle could not be handed over any more.
+    if loaded(call) then return false, 'calls.drop_loaded' end
     call.status, call.worker, call.acceptedAt = 'open', nil, nil
     notify(call.caller, 'calls.reopened', 'inform')
     broadcast()
@@ -265,6 +269,13 @@ AddEventHandler('playerDropped', function()
     end
 end)
 
+---Has a player taken the wheel of the call's vehicle?
+---@param call SwCall
+local function drivenAway(call)
+    local driver = call.vehicle and GetPedInVehicleSeat(call.vehicle, -1) or 0
+    return driver ~= 0 and IsPedAPlayer(driver)
+end
+
 -- Timeouts. One cheap pass every 30 seconds.
 CreateThread(function()
     while true do
@@ -273,9 +284,13 @@ CreateThread(function()
         for id, call in pairs(active) do
             if call.vehicle and not DoesEntityExist(call.vehicle) then
                 remove(id, 'calls.vehicle_gone')
+            elseif call.type == 'abandoned' and drivenAway(call) then
+                remove(id)
             elseif call.status == 'open' and now - call.createdAt > config.calls.acceptTimeout * 60 then
                 remove(id, 'calls.expired')
-            elseif call.status == 'accepted' and now - call.acceptedAt > config.calls.deliverTimeout * 60 then
+            elseif call.status == 'accepted' and now - call.acceptedAt > config.calls.deliverTimeout * 60
+                and not loaded(call) then
+                -- A vehicle already on the truck is on its way: the call stays until it is handed over.
                 remove(id, 'calls.expired')
             end
         end
