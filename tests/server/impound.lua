@@ -286,3 +286,14 @@ test.case('garbage from a client at the counter is refused without errors', func
     end
     w:assertNoErrors()
 end)
+
+test.case('a car strapped to the truck is delivered even if its position on the server trails behind', function()
+    local w = newWorld()
+    local t = flow.towedToYard(w)
+    local truckCoords = w:entity(t.truck).coords
+    w:move(t.car, truckCoords + vector.vec3(0.0, -60.0, 0.0))
+    test.refusedWith('impound.no_cargo', flow.deliver(w, t.worker, t.truck))
+    w:entity(t.car).attachedTo = t.truck
+    w:advance(1)
+    test.accepted(flow.deliver(w, t.worker, t.truck))
+end)

@@ -260,6 +260,12 @@ local function driveToYard(truck)
     sitIn(truck)
     moveVehicle(truck, YARD.zone.coords, GetEntityHeading(truck))
     getOut()
+    Wait(1000) -- the server catches up with the move
+end
+
+---A failed hand-over with what the server knows of the cargo.
+local function deliverFailure(truck, errorKey)
+    return ('%s · server: %s'):format(why(errorKey), tostring(lib.callback.await('sw_tow:dev:cargo', false, VehToNet(truck))))
 end
 
 local function findPlate(plate, near, radius)
@@ -495,10 +501,21 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     local min = GetModelDimensions(GetEntityModel(truck))
     local driven = spawnVehicle('asea', behind(truck, 'asea', 3.0))
     if driven and control(driven) then
-        -- As if driven up the ramps: dropped from just above the middle of the bed, then settled.
-        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, (min.y + config.flatbed.bedFrontY) / 2, 1.6)
+        -- As if driven up the ramps: set down on the middle of the bed, then settled. The bed surface is
+        -- measured with a ray, so the car neither drops from high up nor starts inside the bed.
+        local y = (min.y + config.flatbed.bedFrontY) / 2
+        local from = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, 4.0)
+        local to = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, -1.0)
+        local probe = StartExpensiveSynchronousShapeTestLosProbe(from.x, from.y, from.z, to.x, to.y, to.z, 2, driven, 7)
+        local _, hit, bed = GetShapeTestResult(probe)
+        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, 1.6)
+        if hit == 1 or hit == true then
+            local carMin = GetModelDimensions(GetEntityModel(driven))
+            onTop = vec3(onTop.x, onTop.y, bed.z - carMin.z + 0.1)
+        end
         SetEntityCoords(driven, onTop.x, onTop.y, onTop.z, false, false, false, false)
         SetEntityHeading(driven, GetEntityHeading(truck))
+        SetEntityVelocity(driven, 0.0, 0.0, 0.0)
         Wait(500)
         waitFor(function() return GetEntitySpeed(driven) < 0.05 end, 4000)
         local c = GetEntityCoords(driven)
@@ -576,7 +593,7 @@ scenario('impound', 'Player call: tow, pay, impound and release at the counter',
 
     local before = money()
     ok, errorKey = tow.deliver(t.truck)
-    expect(ok, 'handed over at the yard', why(errorKey))
+    expect(ok, 'handed over at the yard', not ok and deliverFailure(t.truck, errorKey) or nil)
     local pay = expectedPay(t.pickup)
     local paid = money() - before
     check(math.abs(paid - pay) <= 2, ('paid %s for the tow'):format(util.money(paid)), ('expected about %s'):format(util.money(pay)))
@@ -625,7 +642,7 @@ scenario('police', 'Police hold: blocked release, lifted hold, fine on the bill'
     lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
     local before = money()
     local ok, errorKey = tow.deliver(t.truck)
-    expect(ok, 'handed over at the yard', why(errorKey))
+    expect(ok, 'handed over at the yard', not ok and deliverFailure(t.truck, errorKey) or nil)
     local paid = money() - before
 
     teleport(counter().xyz, counter().w)

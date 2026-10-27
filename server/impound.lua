@@ -135,7 +135,10 @@ local function deliver(src, truckNet, yardKey, unloaded)
     unloaded = unloaded == true and record and record.lowering == true
     if not record or not (record.secured or unloaded) then return false, 'impound.no_cargo' end
     local target = record.target
-    if #(GetEntityCoords(target) - GetEntityCoords(truck)) > (unloaded and 25.0 or 10.0) then
+    -- Strapped to the truck counts as on it: the server's copy of an attached car's position can
+    -- trail the truck's by a moment after a drive.
+    local onTruck = GetEntityAttachedTo(target) == truck
+    if not onTruck and #(GetEntityCoords(target) - GetEntityCoords(truck)) > (unloaded and 25.0 or 10.0) then
         return false, 'impound.no_cargo'
     end
 

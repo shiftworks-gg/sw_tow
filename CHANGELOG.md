@@ -27,3 +27,4 @@
 - Fixed: route and yard-zone loops ran off shift.
 - Repeating an action too quickly now says to wait a moment instead of "Something went wrong".
 - Fixed (QBCore): released motorcycles were created as cars.
+- Fixed: a hand-over could be refused as "nothing loaded" right after arriving, while the server's copy of the strapped car's position still trailed the truck.

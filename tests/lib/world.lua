@@ -759,6 +759,10 @@ function World:buildEnv()
         end
         return e.coords
     end
+    env.GetEntityAttachedTo = function(id)
+        local e = w.entities[id]
+        return e and e.attachedTo or 0
+    end
     env.GetEntityHeading = function(id)
         local e = w.entities[id]
         return e and e.heading or 0.0

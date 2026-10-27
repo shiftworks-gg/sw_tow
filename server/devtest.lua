@@ -114,6 +114,15 @@ register('ageCargo', function(_, truckNet, seconds)
     return true
 end)
 
+---What the server knows of a truck's cargo, for a failure message.
+register('cargo', function(_, truckNet)
+    local truck = NetworkGetEntityFromNetworkId(truckNet)
+    local record = truck ~= 0 and tow.get(truck)
+    if not record then return 'no cargo record' end
+    return ('secured %s, attached %s, %.1f m from the truck'):format(tostring(record.secured),
+        tostring(GetEntityAttachedTo(record.target) == truck), #(GetEntityCoords(record.target) - GetEntityCoords(truck)))
+end)
+
 ---Pretends an impounded vehicle has stood in the yard `hours` longer.
 register('ageImpound', function(_, plate, hours)
     local changed = MySQL.update.await(
