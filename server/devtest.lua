@@ -181,6 +181,15 @@ register('hasCall', function(_, netId)
     return vehicle ~= 0 and calls.hasVehicle(vehicle)
 end)
 
+---Runs the call timeout pass now; says who the server sees at the wheel of a vehicle.
+register('sweepCalls', function(_, netId)
+    calls.sweep()
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    local driver = vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) or 0
+    return true, driver == 0 and 'the server sees nobody at the wheel'
+        or IsPedAPlayer(driver) and 'the server sees a player at the wheel' or 'the server sees an NPC at the wheel'
+end)
+
 register('closeCall', function(_, id)
     return calls.close(id)
 end)

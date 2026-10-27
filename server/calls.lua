@@ -286,24 +286,28 @@ local function drivenAway(call)
     return driver ~= 0 and IsPedAPlayer(driver)
 end
 
--- Timeouts. One cheap pass every 30 seconds.
+---Timeouts and calls that no longer apply. Runs every 30 seconds.
+function calls.sweep()
+    local now = os.time()
+    for id, call in pairs(active) do
+        if call.vehicle and not DoesEntityExist(call.vehicle) then
+            remove(id, 'calls.vehicle_gone')
+        elseif call.type == 'abandoned' and drivenAway(call) then
+            remove(id)
+        elseif call.status == 'open' and now - call.createdAt > config.calls.acceptTimeout * 60 then
+            remove(id, 'calls.expired')
+        elseif call.status == 'accepted' and now - call.acceptedAt > config.calls.deliverTimeout * 60
+            and not loaded(call) then
+            -- A vehicle already on the truck is on its way: the call stays until it is handed over.
+            remove(id, 'calls.expired')
+        end
+    end
+end
+
 CreateThread(function()
     while true do
         Wait(30000)
-        local now = os.time()
-        for id, call in pairs(active) do
-            if call.vehicle and not DoesEntityExist(call.vehicle) then
-                remove(id, 'calls.vehicle_gone')
-            elseif call.type == 'abandoned' and drivenAway(call) then
-                remove(id)
-            elseif call.status == 'open' and now - call.createdAt > config.calls.acceptTimeout * 60 then
-                remove(id, 'calls.expired')
-            elseif call.status == 'accepted' and now - call.acceptedAt > config.calls.deliverTimeout * 60
-                and not loaded(call) then
-                -- A vehicle already on the truck is on its way: the call stays until it is handed over.
-                remove(id, 'calls.expired')
-            end
-        end
+        calls.sweep()
     end
 end)
 

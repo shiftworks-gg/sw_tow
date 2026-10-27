@@ -457,6 +457,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
         { model = 'asea', side = -0.8, angle = 10.0, label = 'sedan turned 10°' },
         { model = 'asea', side = 0.3, angle = 180.0, label = 'sedan rear first' },
     }
+    local restZ -- how high a winched sedan sits on the bed, for setting one down there below
     for _, case in ipairs(cases) do
         local car = spawnVehicle(case.model, behind(truck, case.model, 3.5, case.side, case.angle))
         if check(car, case.label .. ': test vehicle spawned') then
@@ -469,6 +470,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
             if check(ok, ('%s: loaded in %.1f s'):format(case.label, seconds), why(errorKey, value)) then
                 cableTaut(case.label .. ': the cable stays taut while loading', sags[truck])
                 local offset, turn = onBed(truck, car)
+                if case.model == 'asea' then restZ = restZ or offset.z end
                 check(IsEntityAttachedToEntity(car, truck), case.label .. ': strapped to the truck')
                 check(math.abs(offset.x) < 0.25 and turn < 4.0, case.label .. ': straight in the middle of the bed',
                     ('x %+.2f m, turned %.1f°'):format(offset.x, turn))
@@ -513,18 +515,10 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     local min = GetModelDimensions(GetEntityModel(truck))
     local driven = spawnVehicle('asea', behind(truck, 'asea', 3.0))
     if driven and control(driven) then
-        -- As if driven up the ramps: set down on the middle of the bed, then settled. The bed surface is
-        -- measured with a ray, so the car neither drops from high up nor starts inside the bed.
+        -- As if driven up the ramps: set down on the middle of the bed, a little above the height the
+        -- same model sat at when winched on, then settled.
         local y = (min.y + config.flatbed.bedFrontY) / 2
-        local from = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, 4.0)
-        local to = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, -1.0)
-        local probe = StartExpensiveSynchronousShapeTestLosProbe(from.x, from.y, from.z, to.x, to.y, to.z, 2, driven, 7)
-        local _, hit, bed = GetShapeTestResult(probe)
-        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, 1.6)
-        if hit == 1 or hit == true then
-            local carMin = GetModelDimensions(GetEntityModel(driven))
-            onTop = vec3(onTop.x, onTop.y, bed.z - carMin.z + 0.1)
-        end
+        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, (restZ or 1.4) + 0.15)
         SetEntityCoords(driven, onTop.x, onTop.y, onTop.z, false, false, false, false)
         SetEntityHeading(driven, GetEntityHeading(truck))
         SetEntityVelocity(driven, 0.0, 0.0, 0.0)
@@ -534,7 +528,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
             local p = GetOffsetFromEntityGivenWorldCoords(truck, c.x, c.y, c.z)
             return ('(%+.2f %+.2f %+.2f)'):format(p.x, p.y, p.z)
         end
-        local path = { ('ray %s, owner %s'):format((hit == 1 or hit == true) and 'hit the bed' or 'missed',
+        local path = { ('set at z %+.2f, owner %s'):format((restZ or 1.4) + 0.15,
             NetworkHasControlOfEntity(driven) and 'me' or 'other'), at() }
         Wait(250)
         path[#path + 1] = at()
@@ -733,8 +727,13 @@ scenario('abandoned', 'Abandoned vehicle: becomes a call, closes when driven awa
     check(findCall(function(call) return call.type == 'abandoned' and call.plate == plate end), 'the call shows in the list')
     teleport(at + vec3(2.5, 0.0, 0.0))
     sitIn(car)
-    check(waitFor(function() return not lib.callback.await('sw_tow:dev:hasCall', false, VehToNet(car)) end, 35000),
-        'the call closes when a player drives it away (checked every 30 s)')
+    check(GetVehiclePedIsIn(cache.ped, false) == car, 'you sit at the wheel')
+    local seen
+    check(waitFor(function()
+        Wait(400)
+        seen = select(2, lib.callback.await('sw_tow:dev:sweepCalls', false, VehToNet(car)))
+        return not lib.callback.await('sw_tow:dev:hasCall', false, VehToNet(car))
+    end, 6000), 'the call closes when a player drives it away', seen)
     getOut()
     remove(car)
 end)
