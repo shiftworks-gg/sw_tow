@@ -528,12 +528,21 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
         SetEntityCoords(driven, onTop.x, onTop.y, onTop.z, false, false, false, false)
         SetEntityHeading(driven, GetEntityHeading(truck))
         SetEntityVelocity(driven, 0.0, 0.0, 0.0)
-        Wait(500)
+        -- Where it goes, for the failure message: truck space right after, at 0.25 s, 1 s and at rest.
+        local function at()
+            local c = GetEntityCoords(driven)
+            local p = GetOffsetFromEntityGivenWorldCoords(truck, c.x, c.y, c.z)
+            return ('(%+.2f %+.2f %+.2f)'):format(p.x, p.y, p.z)
+        end
+        local path = { ('ray %s, owner %s'):format((hit == 1 or hit == true) and 'hit the bed' or 'missed',
+            NetworkHasControlOfEntity(driven) and 'me' or 'other'), at() }
+        Wait(250)
+        path[#path + 1] = at()
+        Wait(750)
+        path[#path + 1] = at()
         waitFor(function() return GetEntitySpeed(driven) < 0.05 end, 4000)
-        local c = GetEntityCoords(driven)
-        local p = GetOffsetFromEntityGivenWorldCoords(truck, c.x, c.y, c.z)
-        check(flatbed.isOnBed(truck, driven), 'a car standing on the bed is recognised',
-            ('truck-space x %+.2f, y %+.2f, z %+.2f'):format(p.x, p.y, p.z))
+        path[#path + 1] = at()
+        check(flatbed.isOnBed(truck, driven), 'a car standing on the bed is recognised', table.concat(path, ' → '))
         local ok, errorKey = tow.secureInPlace(truck, driven)
         check(ok and IsEntityAttachedToEntity(driven, truck), 'it is strapped where it stands', why(errorKey))
         check(not flatbed.rampsDown(truck), 'the ramps go up after strapping')
