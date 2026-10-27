@@ -268,13 +268,16 @@ end, false)
 
 -- Winch cable, drawn by every client that has the truck streamed in.
 
----@type table<integer, integer> truck entity -> rope handle
+---@type table<integer, integer[]> truck entity -> rope handles (two segments)
 local ropes = {}
 
 local function removeRope(truck)
-    local rope = ropes[truck]
+    local list = ropes[truck]
     ropes[truck] = nil
-    if rope and DoesRopeExist(rope) then DeleteRope(rope) end
+    if not list then return end
+    for i = 1, #list do
+        if DoesRopeExist(list[i]) then DeleteRope(list[i]) end
+    end
 end
 
 local function loadRopeTextures()
@@ -286,6 +289,36 @@ local function loadRopeTextures()
         Wait(0)
     end
     return true
+end
+
+---The cable's path: winch, bend, hook. While the hook is behind the bed the bend is the roller on
+---its rear edge, so the cable lies on the bed and goes down over the edge; once the hook is up on
+---the bed the bend sits half-way and the cable runs straight.
+---@return vector3 winch, vector3 bend, vector3 hook
+local function cablePath(truck, target, roller)
+    local w, h = winchPoint(truck), hookPoint(target, truck)
+    if GetOffsetFromEntityGivenWorldCoords(truck, h.x, h.y, h.z).y < roller.y then
+        return w, GetOffsetFromEntityInWorldCoords(truck, roller.x, roller.y, roller.z), h
+    end
+    return w, (w + h) / 2, h
+end
+
+---A cable segment, taut from the start: no slack to sag through the ground.
+local function newSegment(a, b)
+    local length = #(a - b)
+    return AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
+        false, false, false, 1.0, false)
+end
+
+---Pins a segment's ends and pulls it straight. Pinned each frame instead of attaching the rope to
+---the vehicles: an attached rope is a physical constraint and would pull on the vehicle.
+local function holdSegment(rope, a, b)
+    local last = GetRopeVertexCount(rope) - 1
+    if last > 0 then
+        PinRopeVertex(rope, 0, a.x, a.y, a.z)
+        PinRopeVertex(rope, last, b.x, b.y, b.z)
+    end
+    RopeForceLength(rope, math.max(0.1, #(a - b)))
 end
 
 ---@type table<integer, integer> truck entity -> winch target this client is watching
@@ -300,35 +333,26 @@ local function watchWinch(truck, target)
     if watching[truck] == target then return end
     watching[truck] = target
     removeRope(truck)
-    local rope
+    local list
+    local roller = flatbed.rollerOffset(truck)
     if cfg.rope and loadRopeTextures() then
-        local a, b = winchPoint(truck), hookPoint(target, truck)
-        local length = #(a - b)
-        -- Taut from the start (no slack to sag through the road), free to shorten as fast as the
-        -- vehicle comes in, and long enough to pay out when it is let down.
-        rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
-            false, false, false, 1.0, false)
-        ropes[truck] = rope
+        local w, bend, h = cablePath(truck, target, roller)
+        list = { newSegment(w, bend), newSegment(bend, h) }
+        ropes[truck] = list
     end
     CreateThread(function()
         while watching[truck] == target do
             if not DoesEntityExist(truck) or not DoesEntityExist(target) then break end
             SetEntityNoCollisionEntity(target, cache.ped, true)
-            if rope then
-                -- The ends are pinned each frame instead of attaching the rope to the vehicles: an
-                -- attached rope is a physical constraint and would pull on the vehicle.
-                local w, h = winchPoint(truck), hookPoint(target, truck)
-                local last = GetRopeVertexCount(rope) - 1
-                if last > 0 then
-                    PinRopeVertex(rope, 0, w.x, w.y, w.z)
-                    PinRopeVertex(rope, last, h.x, h.y, h.z)
-                end
-                RopeForceLength(rope, #(w - h))
+            if list then
+                local w, bend, h = cablePath(truck, target, roller)
+                holdSegment(list[1], w, bend)
+                holdSegment(list[2], bend, h)
             end
             Wait(0)
         end
         if watching[truck] == target then watching[truck] = nil end
-        if ropes[truck] == rope then removeRope(truck) end
+        if ropes[truck] == list then removeRope(truck) end
     end)
 end
 

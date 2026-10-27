@@ -1037,6 +1037,24 @@ function flatbed.assess(truck, target, geometry)
     return result
 end
 
+---@type table<integer, vector3> truck model -> roller offset
+local rollers = {}
+
+---The roller on the rear edge of the bed, in truck space. While the vehicle is behind the bed the
+---cable runs along the bed, over this roller and down to the vehicle, never through the bed.
+---Measured once per truck model.
+---@param truck integer
+---@return vector3
+function flatbed.rollerOffset(truck)
+    local model = GetEntityModel(truck)
+    if not rollers[model] then
+        local min = GetModelDimensions(model)
+        local surface = toTruck(truck, bedRear(truck))
+        rollers[model] = vec3(0.0, (cfg.rearY or min.y) + 0.1, surface.z + 0.06)
+    end
+    return rollers[model]
+end
+
 ---Where the ramps meet the ground, as truck-space y (behind the truck is negative). For placing
 ---vehicles in /swtow_test. Nil when the ramp model cannot be loaded.
 ---@param truck integer
