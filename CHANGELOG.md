@@ -25,4 +25,5 @@
 - Fixed: a failed unload could leave the ramps down with no way to raise them.
 - Fixed: a missed tow-arm hook counted as cargo.
 - Fixed: route and yard-zone loops ran off shift.
+- Repeating an action too quickly now says to wait a moment instead of "Something went wrong".
 - Fixed (QBCore): released motorcycles were created as cars.

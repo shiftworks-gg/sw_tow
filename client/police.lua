@@ -45,8 +45,8 @@ local function openHolds(yardKey)
             description = ('%s · %s'):format(untilText, item.note or ''),
             icon = 'lock-open',
             onSelect = function()
-                local ok = lib.callback.await('sw_tow:server:liftHold', false, item.id)
-                notify(locale(ok and 'police.lifted' or 'common.failed'), ok and 'success' or 'error')
+                local ok, errorKey = lib.callback.await('sw_tow:server:liftHold', false, item.id)
+                notify(locale(ok and 'police.lifted' or (errorKey or 'common.failed')), ok and 'success' or 'error')
             end,
         }
     end

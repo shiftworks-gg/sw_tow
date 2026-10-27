@@ -127,7 +127,7 @@ end
 ---@param message string?
 ---@return boolean ok, string? errorKey
 function calls.createForPlayer(src, message)
-    if not guard.rate(src, 'call') then return false end
+    if not guard.rate(src, 'call') then return false, 'common.wait' end
     local now = os.time()
     if lastCall[src] and now - lastCall[src] < config.calls.cooldown then return false, 'calls.cooldown' end
     for _, call in pairs(active) do
@@ -208,7 +208,8 @@ lib.callback.register('sw_tow:server:listCalls', function(src)
 end)
 
 lib.callback.register('sw_tow:server:acceptCall', function(src, id)
-    if not shift.get(src) or not guard.rate(src, 'call') then return false end
+    if not shift.get(src) then return false end
+    if not guard.rate(src, 'call') then return false, 'common.wait' end
     local call = type(id) == 'number' and active[id]
     if not call or call.status ~= 'open' then return false, 'calls.taken' end
     for _, other in pairs(active) do

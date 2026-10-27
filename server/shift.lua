@@ -75,7 +75,8 @@ function shift.stop(src, reason)
 end
 
 lib.callback.register('sw_tow:server:clockIn', function(src)
-    if shifts[src] or not guard.rate(src, 'clock') then return false end
+    if shifts[src] then return false end
+    if not guard.rate(src, 'clock') then return false, 'common.wait' end
     if not hasJob(src) then return false, 'shift.wrong_job' end
     if not nearOffice(src) then
         log.warn(src, 'clock_in', 'not at the office')
@@ -112,7 +113,8 @@ end
 
 lib.callback.register('sw_tow:server:takeTruck', function(src, index)
     local current = shifts[src]
-    if not current or not guard.rate(src, 'takeTruck') then return false end
+    if not current then return false end
+    if not guard.rate(src, 'takeTruck') then return false, 'common.wait' end
     local option = type(index) == 'number' and config.garage.vehicles[index]
     if not option then return false end
     if current.truck and DoesEntityExist(current.truck) then return false, 'garage.already_out' end

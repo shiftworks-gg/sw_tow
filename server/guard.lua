@@ -6,7 +6,8 @@ local util = require 'shared.util'
 local guard = {}
 local lastAction = {}
 
----False when the player repeats an action faster than config.limits allows.
+---False when the player repeats an action faster than config.limits allows. Callers answer with
+---'common.wait', so the player reads "try again in a moment" instead of a generic failure.
 ---@param src integer
 ---@param action string
 ---@return boolean

@@ -6,7 +6,8 @@
     "error": "Nicht möglich"
   },
   "common": {
-    "failed": "Etwas ist schiefgelaufen. Versuch es noch einmal."
+    "failed": "Etwas ist schiefgelaufen. Versuch es noch einmal.",
+    "wait": "Einen Moment. Versuch es in ein paar Sekunden noch einmal."
   },
   "shift": {
     "clock_in": "Schicht beginnen",

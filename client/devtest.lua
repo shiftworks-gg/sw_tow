@@ -215,6 +215,10 @@ local function truckOnSite(index)
     if not truck then
         teleport(config.office.coords.xyz, config.office.coords.w)
         local ok, errorKey = shift.takeTruck(index)
+        if errorKey == 'common.wait' then -- one truck request per 5 s
+            Wait(5100)
+            ok, errorKey = shift.takeTruck(index)
+        end
         expect(ok, ('a %s is taken out'):format(wanted.label), why(errorKey))
         truck = expect(waitFor(shift.truck, 5000), 'the truck exists')
     end
@@ -404,7 +408,7 @@ scenario('shift', 'Clock in, panel, trucks, clock out', function()
     local truck = expect(waitFor(shift.truck, 5000), 'the flatbed exists')
     local plate = util.trimPlate(GetVehicleNumberPlateText(truck))
     check(plate:sub(1, #config.garage.platePrefix) == config.garage.platePrefix, 'its plate has the company prefix', plate)
-    check(Entity(truck).state['sw_tow:method'] == 'flatbed', 'it is marked as a flatbed')
+    check(bagIs(truck, 'sw_tow:method', function(v) return v == 'flatbed' end), 'it is marked as a flatbed')
     Wait(5100)
     check(select(2, shift.takeTruck(FLATBED)) == 'garage.already_out', 'a second truck is refused')
     texts = panel.probe()

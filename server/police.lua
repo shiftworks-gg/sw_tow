@@ -35,7 +35,8 @@ local function wholeNumber(value, min, max)
 end
 
 lib.callback.register('sw_tow:server:policeOrder', function(src, netId, form)
-    if not cfg.enabled or not guard.rate(src, 'policeOrder') or not police.isOfficer(src) then return false end
+    if not cfg.enabled or not police.isOfficer(src) then return false end
+    if not guard.rate(src, 'policeOrder') then return false, 'common.wait' end
     local vehicle = guard.vehicle(netId)
     if not vehicle or type(form) ~= 'table' then return false end
     if not guard.near(src, GetEntityCoords(vehicle), 8.0) then
@@ -85,7 +86,8 @@ lib.callback.register('sw_tow:server:holdList', function(src, yardKey)
 end)
 
 lib.callback.register('sw_tow:server:liftHold', function(src, recordId)
-    if not police.isOfficer(src) or not guard.rate(src, 'policeOrder') or math.type(recordId) ~= 'integer' then return false end
+    if not police.isOfficer(src) or math.type(recordId) ~= 'integer' then return false end
+    if not guard.rate(src, 'policeOrder') then return false, 'common.wait' end
     local record = storage.getActive(recordId)
     if not record then return false end
     local yard = config.yards[record.yard]

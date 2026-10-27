@@ -148,3 +148,13 @@ test.case('stopping the resource removes every company truck', function()
     test.falsy(w:exists(truck))
     test.falsy(w.env.Player(src).state['sw_tow:shift'])
 end)
+
+test.case('repeating an action too quickly says to wait, not that something failed', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    flow.truck(w, src, 1)
+    test.refusedWith('common.wait', w:call('sw_tow:server:takeTruck', src, 2))
+    w:advance(6)
+    test.refusedWith('garage.already_out', w:call('sw_tow:server:takeTruck', src, 2))
+end)
+

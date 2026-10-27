@@ -6,7 +6,8 @@
     "error": "Not possible"
   },
   "common": {
-    "failed": "Something went wrong. Try again."
+    "failed": "Something went wrong. Try again.",
+    "wait": "One moment. Try again in a few seconds."
   },
   "shift": {
     "clock_in": "Clock in",

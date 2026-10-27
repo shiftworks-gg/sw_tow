@@ -209,7 +209,7 @@ local function deliver(src, truckNet, yardKey, unloaded)
 end
 
 lib.callback.register('sw_tow:server:deliver', function(src, truckNet, yardKey, unloaded)
-    if delivering[src] or not guard.rate(src, 'deliver') then return false end
+    if delivering[src] or not guard.rate(src, 'deliver') then return false, 'common.wait' end
     delivering[src] = true
     local ok, result, errorKey = pcall(deliver, src, truckNet, yardKey, unloaded)
     delivering[src] = nil
@@ -241,7 +241,8 @@ lib.callback.register('sw_tow:server:counterList', function(src, yardKey)
 end)
 
 lib.callback.register('sw_tow:server:release', function(src, recordId)
-    if not util.isInteger(recordId) or releasing[recordId] or not guard.rate(src, 'release') then return false end
+    if not util.isInteger(recordId) then return false end
+    if releasing[recordId] or not guard.rate(src, 'release') then return false, 'common.wait' end
     releasing[recordId] = true
     local ok, result, errorKey = pcall(function()
         local record = storage.getActive(recordId)
