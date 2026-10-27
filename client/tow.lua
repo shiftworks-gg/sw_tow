@@ -55,8 +55,9 @@ end
 
 ---Runs one truck action at a time and reports a refusal to the player.
 ---@param fn fun(): boolean?, string?, string?
+---@return boolean ok, string? errorKey, string? value
 local function exclusive(fn)
-    if busy then return end
+    if busy then return false, 'busy' end
     busy = true
     flatbed.setBusy(true)
     local ok, result, errorKey, value = pcall(fn)
@@ -65,13 +66,17 @@ local function exclusive(fn)
     if not ok then
         lib.print.error(result)
         report(false)
-    elseif result == false then
-        report(false, errorKey, value)
+        return false, 'common.failed'
     end
+    if result == false then
+        report(false, errorKey, value)
+        return false, errorKey or 'common.failed', value
+    end
+    return true
 end
 
 local function load(truck, target)
-    exclusive(function()
+    return exclusive(function()
         local truckNet, targetNet = VehToNet(truck), VehToNet(target)
         local method = state(truck, 'sw_tow:method')
         if method == 'flatbed' then
@@ -111,7 +116,7 @@ end
 
 ---The owner drove onto the lowered ramps; the worker straps the vehicle where it stands.
 local function secureInPlace(truck, target)
-    exclusive(function()
+    return exclusive(function()
         local truckNet = VehToNet(truck)
         local ok, errorKey = lib.callback.await('sw_tow:server:attach', false, truckNet, VehToNet(target))
         if not ok then return false, errorKey end
@@ -126,8 +131,8 @@ end
 local function unload(truck)
     local targetNet = state(truck, 'sw_tow:cargo')
     local target = targetNet and NetworkDoesEntityExistWithNetworkId(targetNet) and NetToVeh(targetNet)
-    if not target or target == 0 then return end
-    exclusive(function()
+    if not target or target == 0 then return false, 'impound.no_cargo' end
+    return exclusive(function()
         local truckNet = VehToNet(truck)
         if not requestControl(target) or not lib.callback.await('sw_tow:server:lowering', false, truckNet) then
             return false, 'tow.no_control'
@@ -157,14 +162,14 @@ end
 
 local function deliver(truck)
     local yardKey = impound.yardAt(GetEntityCoords(truck))
-    if not yardKey then return end
-    exclusive(function()
+    if not yardKey then return false, 'impound.not_in_yard' end
+    return exclusive(function()
         return lib.callback.await('sw_tow:server:deliver', false, VehToNet(truck), yardKey)
     end)
 end
 
 local function toggleRamps(truck)
-    exclusive(function()
+    return exclusive(function()
         return flatbed.setRamps(truck, not flatbed.rampsDown(truck))
     end)
 end
@@ -346,3 +351,14 @@ AddEventHandler('onResourceStop', function(resource)
     watching = {}
     for truck in pairs(ropes) do removeRope(truck) end
 end)
+
+---The worker's truck actions, as the target options run them (also used by /swtow_test).
+---Each returns ok, errorKey.
+return {
+    load = load,
+    unload = unload,
+    deliver = deliver,
+    secureInPlace = secureInPlace,
+    toggleRamps = toggleRamps,
+    isBusy = function() return busy end,
+}

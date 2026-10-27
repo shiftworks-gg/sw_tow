@@ -115,6 +115,23 @@ function bridge.getVehicleClass(model)
     return ok and class or nil
 end
 
+---Every job the framework knows, with its type (for the self-test).
+---@return table<string, { type: string? }>
+function bridge.getJobs()
+    local list = {}
+    for name, job in pairs(exports.qbx_core:GetJobs()) do list[name] = { type = job.type } end
+    return list
+end
+
+---Development only (swtow_test): gives a player a job.
+---@param src integer
+---@param name string
+---@param grade integer
+---@return boolean
+function bridge.setJob(src, name, grade)
+    return exports.qbx_core:SetJob(src, name, grade) ~= false
+end
+
 ---@param cb fun(src: integer)
 function bridge.onPlayerUnload(cb)
     AddEventHandler('QBCore:Server:OnPlayerUnload', cb)

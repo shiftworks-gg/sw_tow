@@ -81,7 +81,8 @@ local function usedKeys()
     local pipe = assert(io.popen(('git -C "%s" ls-files --cached --others --exclude-standard -- "*.lua"'):format(ROOT)))
     local used = {}
     for file in pipe:lines() do
-        if not file:match('^tests/') and not file:match('^%.check/') then
+        -- configcheck.lua names config paths ('abandoned.enabled'), not locale keys.
+        if not file:match('^tests/') and not file:match('^%.check/') and file ~= 'server/configcheck.lua' then
             local text = read(file)
             for literal in text:gmatch("'([%w_]+%.[%w_]*[%w])'") do
                 if sections[literal:match('^([^.]+)')] then used[literal] = file end

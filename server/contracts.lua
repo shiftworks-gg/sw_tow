@@ -73,16 +73,20 @@ local function onClose(call, delivered)
     end
 end
 
-local function createContract()
+---@param forcedSpot? integer development (swtow_test): this spot, ignoring distance and limits
+---@return integer? callId
+local function createContract(forcedSpot)
     local workers = workersOnShift()
     if #workers == 0 then return end
-    local limit = math.min(cfg.maxOpen, #workers + 1)
-    if calls.count(function(call) return call.type == 'contract' end) >= limit then return end
-
-    local index = pickSpot(workers)
-    if not index then return end
+    local index = forcedSpot
+    if not index then
+        local limit = math.min(cfg.maxOpen, #workers + 1)
+        if calls.count(function(call) return call.type == 'contract' end) >= limit then return end
+        index = pickSpot(workers)
+        if not index then return end
+    end
     busySpots[index] = true
-    calls.add({
+    return calls.add({
         type = 'contract',
         plate = ('SWC%05d'):format(math.random(0, 99999)),
         coords = spots[index],
@@ -123,3 +127,9 @@ if cfg.enabled and #spots > 0 then
         end
     end)
 end
+
+return {
+    create = createContract,
+    spots = spots,
+    busy = busySpots,
+}

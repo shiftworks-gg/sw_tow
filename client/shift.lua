@@ -35,6 +35,34 @@ local function result(ok, errorKey, successKey)
     end
 end
 
+---@return boolean ok, string? errorKey
+function shift.clockIn()
+    return lib.callback.await('sw_tow:server:clockIn', false)
+end
+
+---@return boolean ok, string? errorKey
+function shift.clockOut()
+    local ok, errorKey = lib.callback.await('sw_tow:server:clockOut', false)
+    if ok then truckNet = nil end
+    return ok, errorKey
+end
+
+---@param index integer config.garage.vehicles index
+---@return boolean ok, string? errorKey
+function shift.takeTruck(index)
+    local ok, netIdOrError = lib.callback.await('sw_tow:server:takeTruck', false, index)
+    if not ok then return false, netIdOrError end
+    truckNet = netIdOrError
+    return true
+end
+
+---@return boolean ok, string? errorKey
+function shift.returnTruck()
+    local ok, errorKey = lib.callback.await('sw_tow:server:returnTruck', false)
+    if ok then truckNet = nil end
+    return ok, errorKey
+end
+
 local function takeTruckMenu()
     local options = {}
     for index, option in ipairs(config.garage.vehicles) do
@@ -43,12 +71,11 @@ local function takeTruckMenu()
             description = locale(option.method == 'flatbed' and 'garage.flatbed_hint' or 'garage.hook_hint'),
             icon = 'truck',
             onSelect = function()
-                local ok, netIdOrError = lib.callback.await('sw_tow:server:takeTruck', false, index)
+                local ok, errorKey = shift.takeTruck(index)
                 if ok then
-                    truckNet = netIdOrError
                     notify(locale('garage.taken', option.label), 'success')
                 else
-                    result(false, netIdOrError)
+                    result(false, errorKey)
                 end
             end,
         }
@@ -66,7 +93,7 @@ local function officeOptions()
             distance = 2.5,
             canInteract = function() return hasJob() and not shift.onShift() end,
             onSelect = function()
-                local ok, errorKey = lib.callback.await('sw_tow:server:clockIn', false)
+                local ok, errorKey = shift.clockIn()
                 result(ok, errorKey, 'shift.started')
             end,
         },
@@ -85,8 +112,7 @@ local function officeOptions()
             distance = 2.5,
             canInteract = function() return shift.onShift() and shift.truck() ~= nil end,
             onSelect = function()
-                local ok, errorKey = lib.callback.await('sw_tow:server:returnTruck', false)
-                if ok then truckNet = nil end
+                local ok, errorKey = shift.returnTruck()
                 result(ok, errorKey, 'garage.returned')
             end,
         },
@@ -97,8 +123,7 @@ local function officeOptions()
             distance = 2.5,
             canInteract = function() return shift.onShift() end,
             onSelect = function()
-                local ok, errorKey = lib.callback.await('sw_tow:server:clockOut', false)
-                if ok then truckNet = nil end
+                local ok, errorKey = shift.clockOut()
                 result(ok, errorKey, 'shift.ended')
             end,
         },

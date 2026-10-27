@@ -169,9 +169,42 @@ local function minutes(seconds)
     return math.max(1, math.floor(seconds / 60))
 end
 
+---The calls this worker can see: open ones and their own.
+---@return table[]
+function calls.list()
+    if not shift.onShift() then return {} end
+    return lib.callback.await('sw_tow:server:listCalls', false) or {}
+end
+
+---Accepts a call and sets the route to it.
+---@param call { id: integer, type: string, plate: string } an entry of calls.list()
+---@return boolean ok, string? errorKey
+function calls.accept(call)
+    local ok, result = lib.callback.await('sw_tow:server:acceptCall', false, call.id)
+    if not ok then return false, result end
+    setRoute(call.id, result)
+    activeCall = {
+        id = call.id,
+        type = call.type,
+        plate = call.plate,
+        coords = vec3(result.x, result.y, result.z),
+        deadline = GetGameTimer() + config.calls.deliverTimeout * 60000,
+    }
+    return true
+end
+
+---Gives an accepted call back to the list.
+---@param id integer
+---@return boolean ok, string? errorKey
+function calls.drop(id)
+    local ok, errorKey = lib.callback.await('sw_tow:server:dropCall', false, id)
+    if ok then clearRoute() end
+    return ok, errorKey
+end
+
 local function openList()
     if not shift.onShift() then return end
-    local list = lib.callback.await('sw_tow:server:listCalls', false)
+    local list = calls.list()
     if #list == 0 then
         notify(locale('calls.empty'), 'inform')
         return
@@ -189,30 +222,15 @@ local function openList()
             description = description,
             icon = call.mine and 'location-dot' or (typeIcons[call.type] or 'phone'),
             onSelect = function()
+                local ok, errorKey
                 if call.mine then
-                    local ok, errorKey = lib.callback.await('sw_tow:server:dropCall', false, call.id)
-                    if ok then
-                        clearRoute()
-                        notify(locale('calls.dropped'), 'inform')
-                    else
-                        notify(locale(errorKey or 'common.failed'), 'error')
-                    end
-                    return
-                end
-                local ok, result = lib.callback.await('sw_tow:server:acceptCall', false, call.id)
-                if ok then
-                    setRoute(call.id, result)
-                    activeCall = {
-                        id = call.id,
-                        type = call.type,
-                        plate = call.plate,
-                        coords = vec3(result.x, result.y, result.z),
-                        deadline = GetGameTimer() + config.calls.deliverTimeout * 60000,
-                    }
-                    notify(locale('calls.route_set'), 'success')
+                    ok, errorKey = calls.drop(call.id)
+                    if ok then notify(locale('calls.dropped'), 'inform') end
                 else
-                    notify(locale(result or 'common.failed'), 'error')
+                    ok, errorKey = calls.accept(call)
+                    if ok then notify(locale('calls.route_set'), 'success') end
                 end
+                if not ok then notify(locale(errorKey or 'common.failed'), 'error') end
             end,
         }
     end

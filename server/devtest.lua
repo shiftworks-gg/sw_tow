@@ -1,0 +1,204 @@
+---Server side of the in-game test runner (/swtow_test, see client/devtest.lua). Active only with
+---`setr sw_tow_dev 1` in server.cfg, and only for players allowed the ace command.swtow_test (admins).
+---It sets up what the scenarios need: the job, money, owned test vehicles, aged cargo and records.
+---Every test vehicle has a plate starting with SWTE; `cleanup` removes them and their database rows.
+---Never enable this on a live server: it hands out jobs, money and vehicles.
+local config = require 'config'
+local framework = require 'bridge.loader'
+local integrations = require 'bridge.integrations'
+local storage = require 'server.storage'
+local shift = require 'server.shift'
+local tow = require 'server.tow'
+local calls = require 'server.calls'
+local contracts = require 'server.contracts'
+local abandoned = require 'server.abandoned'
+local impound = require 'server.impound'
+
+if GetConvar('sw_tow_dev', '0') ~= '1' then return end
+
+local TEST_PLATE = 'SWTE'
+
+lib.print.warn('sw_tow_dev is on: /swtow_test can hand out jobs, money and vehicles. Development servers only.')
+
+---@param name string
+---@param fn fun(src: integer, ...): any, any, any
+local function register(name, fn)
+    lib.callback.register('sw_tow:dev:' .. name, function(src, ...)
+        if not IsPlayerAceAllowed(src, 'command.swtow_test') then return false, 'not allowed (ace command.swtow_test)' end
+        local ok, a, b, c = pcall(fn, src, ...)
+        if not ok then
+            lib.print.error(('dev:%s: %s'):format(name, a))
+            return false, tostring(a)
+        end
+        return a, b, c
+    end)
+end
+
+local function testPlate()
+    for _ = 1, 50 do
+        local plate = ('%s%04d'):format(TEST_PLATE, math.random(0, 9999))
+        if not MySQL.scalar.await('SELECT 1 FROM player_vehicles WHERE plate = ?', { plate }) then return plate end
+    end
+    error('no free test plate')
+end
+
+---@param coords table { x, y, z, w }
+local function vec4Of(coords)
+    return vec4(coords.x + 0.0, coords.y + 0.0, coords.z + 0.0, (coords.w or 0.0) + 0.0)
+end
+
+register('prepare', function(src)
+    local job = framework.getJob(src)
+    if not job or job.name ~= config.job then
+        if not framework.setJob(src, config.job, 0) then error('could not give the job ' .. config.job) end
+        Wait(500)
+    end
+    for _, account in ipairs({ 'bank', 'cash' }) do
+        local have = framework.getMoney(src, account)
+        if have < 20000 then framework.addMoney(src, account, 20000 - have, 'sw-tow-test') end
+    end
+    return true
+end)
+
+register('money', function(src)
+    return { cash = framework.getMoney(src, 'cash'), bank = framework.getMoney(src, 'bank') }
+end)
+
+register('stats', function(src)
+    local current = shift.get(src)
+    return current and { deliveries = current.deliveries, earned = current.earned } or false
+end)
+
+---A vehicle nobody owns, as if parked by the game.
+register('spawnVehicle', function(_, model, coords)
+    local netId = framework.spawnVehicle(model, vec4Of(coords), { plate = testPlate() })
+    return netId
+end)
+
+---A vehicle owned by the tester, registered in the garage script like a bought car.
+register('ownedVehicle', function(src, model, coords)
+    local citizenid = framework.getCitizenId(src)
+    local plate = testPlate()
+    local vehicleId
+    if integrations.names.garage == 'qbx_garages' then
+        local err
+        vehicleId, err = exports.qbx_vehicles:CreatePlayerVehicle({ model = model, citizenid = citizenid, props = { plate = plate } })
+        if not vehicleId then error('CreatePlayerVehicle: ' .. json.encode(err)) end
+    elseif integrations.names.garage == 'qb-garages' then
+        vehicleId = MySQL.insert.await(
+            'INSERT INTO player_vehicles (license, citizenid, vehicle, hash, mods, plate, garage, state) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+            { GetPlayerIdentifierByType(src, 'license'), citizenid, model, joaat(model),
+                json.encode({ model = joaat(model), plate = plate }), plate, 'pillboxgarage' })
+    else
+        error('no garage script: owned vehicles need qbx_garages or qb-garages')
+    end
+    local netId, entity = framework.spawnVehicle(model, vec4Of(coords), { plate = plate })
+    Entity(entity).state:set('vehicleid', vehicleId, false)
+    return netId, vehicleId, plate
+end)
+
+register('garageState', function(_, vehicleId)
+    return MySQL.single.await('SELECT state, garage, depotprice FROM player_vehicles WHERE id = ?', { vehicleId }) or false
+end)
+
+register('isHeld', function(_, vehicleId)
+    return impound.isHeld(vehicleId) or false
+end)
+
+---Pretends the loaded vehicle was picked up `seconds` ago (the too-fast check measures from then).
+register('ageCargo', function(_, truckNet, seconds)
+    local truck = NetworkGetEntityFromNetworkId(truckNet)
+    local record = truck ~= 0 and tow.get(truck)
+    if not record then return false end
+    record.pickedAt = record.pickedAt - seconds
+    return true
+end)
+
+---Pretends an impounded vehicle has stood in the yard `hours` longer.
+register('ageImpound', function(_, plate, hours)
+    local changed = MySQL.update.await(
+        'UPDATE sw_tow_impound SET stored_at = stored_at - INTERVAL ? HOUR WHERE plate = ? AND released_at IS NULL',
+        { hours, plate })
+    return changed > 0
+end)
+
+---A police order without an officer (the officer's form is tested by hand).
+register('policeOrder', function(src, netId, fine, hold, holdHours)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if vehicle == 0 then return false end
+    return calls.add({
+        type = 'police', caller = src, plate = framework.getPlate(vehicle), vehicle = vehicle,
+        coords = GetEntityCoords(vehicle), message = 'swtow_test', fine = fine, hold = hold, holdHours = holdHours,
+    })
+end)
+
+register('liftHold', function(_, plate)
+    local id = MySQL.scalar.await('SELECT id FROM sw_tow_impound WHERE plate = ? AND released_at IS NULL', { plate })
+    return id ~= nil and storage.liftHold(id)
+end)
+
+---A contract at the free spot nearest to the tester that is still outside the spawn radius.
+register('contract', function(src)
+    if not config.contracts.enabled then return false, 'contracts are off in config.lua' end
+    local origin = GetEntityCoords(GetPlayerPed(src))
+    local best, bestDistance
+    for index, spot in ipairs(contracts.spots) do
+        local d = #(spot - origin)
+        if not contracts.busy[index] and d > config.contracts.spawnRadius + 40.0 and (not bestDistance or d < bestDistance) then
+            best, bestDistance = index, d
+        end
+    end
+    if not best then return false, 'no free spot' end
+    local id = contracts.create(best)
+    return id, contracts.spots[best]
+end)
+
+---Marks a vehicle as left behind long ago and scans at once.
+register('abandon', function(_, netId)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if vehicle == 0 then return false end
+    abandoned.track(vehicle, os.time() - config.abandoned.minutes * 60 - 5)
+    abandoned.scan()
+    return calls.hasVehicle(vehicle)
+end)
+
+register('scanAbandoned', function()
+    abandoned.scan()
+    return true
+end)
+
+register('hasCall', function(_, netId)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    return vehicle ~= 0 and calls.hasVehicle(vehicle)
+end)
+
+register('closeCall', function(_, id)
+    return calls.close(id)
+end)
+
+register('stopShift', function(src)
+    shift.stop(src, 'swtow_test')
+    return true
+end)
+
+---Removes every test vehicle and its database rows.
+register('cleanup', function()
+    local removed = 0
+    for _, vehicle in ipairs(GetAllVehicles() --[[@as integer[] ]]) do
+        if framework.getPlate(vehicle):sub(1, #TEST_PLATE) == TEST_PLATE then
+            framework.deleteVehicle(vehicle)
+            removed = removed + 1
+        end
+    end
+    local records = MySQL.update.await('DELETE FROM sw_tow_impound WHERE plate LIKE ?', { TEST_PLATE .. '%' })
+    local owned = MySQL.update.await('DELETE FROM player_vehicles WHERE plate LIKE ?', { TEST_PLATE .. '%' })
+    return { vehicles = removed, records = records, owned = owned }
+end)
+
+register('report', function(src, lines)
+    if type(lines) ~= 'table' then return false end
+    local text = table.concat(lines, '\n')
+    SaveResourceFile(cache.resource, 'tests-ingame.log', text .. '\n', -1)
+    print(('^3[sw_tow]^7 in-game tests by %s:\n%s'):format(GetPlayerName(src) or src, text))
+    return true
+end)

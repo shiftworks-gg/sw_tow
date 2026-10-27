@@ -81,11 +81,23 @@
       panel.hidden = !data.value;
     } else if (data.type === 'state') {
       render(data.state || {});
+    } else if (data.type === 'probe') {
+      // /swtow_test reads back what the player sees.
+      const read = (id) => $(id).textContent;
+      post('probe', {
+        visible: !panel.hidden,
+        title: read('title'), truck: read('truck'), cargo: read('cargo'), call: read('call'),
+        distance: $('distanceRow').hidden ? null : read('distance'), shift: read('shift'),
+        timer: $('timer').hidden ? null : read('timerTime'),
+      });
     }
   });
 
-  // Tell Lua the page is ready for the init message (GetParentResourceName is provided by FiveM).
-  if (typeof GetParentResourceName === 'function') {
-    fetch(`https://${GetParentResourceName()}/ready`, { method: 'POST', body: '{}' }).catch(() => {});
+  function post(name, body) {
+    if (typeof GetParentResourceName !== 'function') return;
+    fetch(`https://${GetParentResourceName()}/${name}`, { method: 'POST', body: JSON.stringify(body || {}) }).catch(() => {});
   }
+
+  // Tell Lua the page is ready for the init message (GetParentResourceName is provided by FiveM).
+  post('ready');
 })();

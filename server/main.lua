@@ -3,6 +3,13 @@ assert(lib.checkDependency('ox_lib', '3.30.0', true))
 assert(lib.checkDependency('ox_target', '1.17.0', true))
 assert(lib.checkDependency('oxmysql', '2.10.0', true))
 
+-- A broken config stops here with every problem named, not in the middle of a shift.
+local problems = require('server.configcheck').run(require 'config')
+if #problems > 0 then
+    for _, problem in ipairs(problems) do lib.print.error('config.lua → ' .. problem) end
+    error(('sw_tow did not start: config.lua has %d problem(s), listed above.'):format(#problems), 0)
+end
+
 local framework = require 'bridge.loader'
 local integrations = require 'bridge.integrations'
 local storage = require 'server.storage'
@@ -14,6 +21,8 @@ require 'server.contracts'
 require 'server.abandoned'
 require 'server.devspots'
 require 'server.version'
+require 'server.selftest'
+require 'server.devtest'
 local impound = require 'server.impound'
 local spotlist = require 'server.spotlist'
 

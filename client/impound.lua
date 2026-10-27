@@ -12,11 +12,25 @@ local function vehicleLabel(model)
     return text ~= 'NULL' and text or model
 end
 
+---The player's vehicles in a yard, with their fees. Only works at the yard's counter.
+---@param yardKey string
+---@return { id: integer, plate: string, model: string, reason: string, fee: integer, held: boolean }[]
+function impound.list(yardKey)
+    return lib.callback.await('sw_tow:server:counterList', false, yardKey) or {}
+end
+
+---Pays the fee and takes the vehicle out.
+---@param id integer record id from impound.list
+---@return boolean ok, string? errorKey
+function impound.release(id)
+    return lib.callback.await('sw_tow:server:release', false, id)
+end
+
 ---@param yardKey string
 local function openCounter(yardKey)
     local yard = config.yards[yardKey]
-    local list = lib.callback.await('sw_tow:server:counterList', false, yardKey)
-    if not list or #list == 0 then
+    local list = impound.list(yardKey)
+    if #list == 0 then
         notify(locale('impound.nothing_here'), 'inform')
         return
     end
@@ -37,7 +51,7 @@ local function openCounter(yardKey)
                     labels = { confirm = locale('impound.release_button', util.money(item.fee)) },
                 })
                 if confirm ~= 'confirm' then return end
-                local ok, errorKey = lib.callback.await('sw_tow:server:release', false, item.id)
+                local ok, errorKey = impound.release(item.id)
                 notify(locale(ok and 'impound.released' or (errorKey or 'common.failed')), ok and 'success' or 'error')
             end,
         }

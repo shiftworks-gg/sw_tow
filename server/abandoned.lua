@@ -90,6 +90,17 @@ local function scan()
     end
 end
 
+local abandoned = {}
+
+---Development (swtow_test): treat a vehicle as driven by a player and standing since `since`.
+---@param vehicle integer
+---@param since integer os.time()
+function abandoned.track(vehicle, since)
+    tracked[vehicle] = { coords = GetEntityCoords(vehicle), since = since }
+end
+
+abandoned.scan = scan
+
 if cfg.enabled then
     CreateThread(function()
         while true do
@@ -99,3 +110,5 @@ if cfg.enabled then
         end
     end)
 end
+
+return abandoned

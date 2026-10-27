@@ -1037,6 +1037,18 @@ function flatbed.assess(truck, target, geometry)
     return result
 end
 
+---Where the ramps meet the ground, as truck-space y (behind the truck is negative). For placing
+---vehicles in /swtow_test. Nil when the ramp model cannot be loaded.
+---@param truck integer
+---@return number?
+function flatbed.rampFootY(truck)
+    local ok, model = pcall(lib.requestModel, cfg.ramp.model)
+    if not ok or not model then return end
+    local geometry = currentGeometry(truck)
+    SetModelAsNoLongerNeeded(model)
+    return geometry and geometry.footY
+end
+
 ---@param truck integer
 ---@param target integer
 ---@return boolean ok, string? errorKey, string? value

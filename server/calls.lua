@@ -113,6 +113,15 @@ function calls.complete(id)
     remove(id, 'calls.completed', true)
 end
 
+---Closes a call without a delivery (its source cleans up, e.g. a contract removes its vehicle).
+---@param id integer
+---@return boolean found
+function calls.close(id)
+    if not active[id] then return false end
+    remove(id)
+    return true
+end
+
 ---Player call for the vehicle they are in or drove last.
 ---@param src integer
 ---@param message string?

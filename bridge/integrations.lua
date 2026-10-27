@@ -147,12 +147,16 @@ keys.none = { give = function() end }
 
 ---@class SwBankingAdapter
 ---@field deposit fun(account: string, amount: integer, reason: string): boolean
+---@field exists fun(account: string): boolean? nil when it cannot be told
 
 local banking = {}
 
 banking['Renewed-Banking'] = {
     deposit = function(account, amount)
         return exports['Renewed-Banking']:addAccountMoney(account, amount) == true
+    end,
+    exists = function(account)
+        return exports['Renewed-Banking']:getAccountMoney(account) ~= false
     end,
 }
 
@@ -162,9 +166,12 @@ banking['qb-banking'] = {
         local result = exports['qb-banking']:AddMoney(account, amount, reason)
         return result == true or (type(result) == 'number' and result > 0)
     end,
+    exists = function(account)
+        return exports['qb-banking']:GetAccount(account) ~= nil
+    end,
 }
 
-banking.none = { deposit = function() return false end }
+banking.none = { deposit = function() return false end, exists = function() return nil end }
 
 local garageName, garage = pick('garage', garages, { 'qbx_garages', 'qb-garages' })
 local keysName, keyAdapter = pick('keys', keys, { 'qbx_vehiclekeys', 'qb-vehiclekeys' })

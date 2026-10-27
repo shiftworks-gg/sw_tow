@@ -8,6 +8,7 @@ require 'client.police'
 require 'client.contracts'
 require 'client.panel'
 require 'client.devspots'
+require 'client.devtest'
 
 shift.createOffice()
 impound.createCounters()

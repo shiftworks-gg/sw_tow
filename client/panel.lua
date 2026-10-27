@@ -90,6 +90,27 @@ local function show(value)
     end)
 end
 
+local panel = {}
+local probeWaiting
+
+---What the panel shows right now, read from the page itself (for /swtow_test).
+---@return table? texts { visible, title, truck, cargo, call, distance, shift, timer }, nil when the page does not answer
+function panel.probe()
+    if not ui.enabled then return end
+    probeWaiting = promise.new()
+    SendNUIMessage({ type = 'probe' })
+    local waiting = probeWaiting
+    SetTimeout(2000, function() if waiting then waiting:resolve(nil) end end)
+    local texts = Citizen.Await(waiting)
+    probeWaiting = nil
+    return texts
+end
+
+RegisterNUICallback('probe', function(texts, respond)
+    respond(true)
+    if probeWaiting then probeWaiting:resolve(texts) end
+end)
+
 RegisterNetEvent('sw_tow:client:shiftStats', function(deliveries, earned)
     if type(deliveries) ~= 'number' or type(earned) ~= 'number' then return end
     stats.deliveries, stats.earned = deliveries, earned
@@ -108,3 +129,5 @@ RegisterNUICallback('ready', function(_, respond)
     visible = false
     show(shift.onShift())
 end)
+
+return panel

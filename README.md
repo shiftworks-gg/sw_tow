@@ -40,6 +40,14 @@ The console shows one line when it is ready:
 [sw_tow] Shiftworks Tow & Impound 0.1.0 · framework qbox · garage qbx_garages · keys qbx_vehiclekeys · banking Renewed-Banking
 ```
 
+Then type `swtow_selftest` in the server console. It checks the job, the police job type, the garage, keys and banking scripts and their accounts, the database tables, a write and read through the database, its clock, the texts and the contract spots, and names anything that needs fixing:
+
+```
+sw_tow 0.1.0 self-test, 2026-10-27 16:54:33 · 14 PASS · 0 WARN · 0 FAIL
+```
+
+A mistake in `config.lua` stops the start with every problem named, for example `config.lua → payout.account: must be one of cash, bank, is wallet`.
+
 ## Configuration
 
 Everything is in `config.lua`, one comment per line. The parts people change most:
@@ -72,6 +80,7 @@ Texts live in `locales/en.json`, `de.json`, `ru.json`. The language follows `set
 | `/swtow_spots generate [cell]` | admins | Scans the map for roadside spots for NPC contracts and saves them to `data/spots.generated.lua`. One spot per cell, 250 m by default (100–1000). Takes a few minutes; stay in game |
 | `/swtow_spots show` / `hide` | admins | Shows every contract spot on the map: blue are bundled, orange generated |
 | `/swtow_coords` | everyone | Prints your position and heading as `vec4(...)` and copies it, for placing things in `config.lua` |
+| `swtow_selftest` | console, admins | Checks the installation, see above. Results also go to `selftest.log` |
 
 Admin commands need the ace `command.swtow_spots` (the default Qbox recipe gives `group.admin` all commands). Generated spots are used after `restart sw_tow`, face along the road, and keep 150 m from each other and 120 m from the office and yards. Delete a line from the file to drop a spot, or the whole file to go back to the bundled list.
 
@@ -104,10 +113,10 @@ Built for 0.00 ms while not on shift. The client runs nothing until you clock in
 
 ## Development
 
-`scripts/check.sh` runs lua-language-server over the resource with the CfxLua natives, ox_lib and
-qbx_core definitions: undefined globals and natives, wrong fields, argument counts, types. It fetches
-its tools into `.check/` on first run and exits non-zero on any finding. CI runs it on every push,
-together with a check that all locales have the same keys.
+`scripts/test.sh` runs everything that needs no server: the offline test suite (the real server code
+on a simulated FiveM server, Lua 5.4) and the static analysis. CI runs both on every push. On a
+development server `/swtow_test` plays the main flows in game with your own character. See
+[docs/TESTING.md](docs/TESTING.md).
 
 ## Credits
 
