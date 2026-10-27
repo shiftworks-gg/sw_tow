@@ -318,6 +318,13 @@ local function ownedCarToYard(withCall)
     return { truck = truck, car = car, vehicleId = vehicleId, plate = plate, call = call, pickup = pickup }
 end
 
+---Checks the largest sag of the winch cable seen during a pull (tow.measureSag).
+local function cableTaut(what, seen)
+    if not config.flatbed.rope then return end
+    if not seen then return check(false, what, 'no cable was drawn') end
+    check(seen < 0.5, what, ('sagged up to %.2f m'):format(seen))
+end
+
 ---Waits for a truck state bag to read as wanted (the server's change arrives a moment later).
 local function bagIs(entity, key, predicate, timeout)
     return waitFor(function() return predicate(Entity(entity).state[key]) end, timeout or 2000) == true
@@ -454,10 +461,13 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
         local car = spawnVehicle(case.model, behind(truck, case.model, 3.5, case.side, case.angle))
         if check(car, case.label .. ': test vehicle spawned') then
             ---@cast car integer
+            local sags = tow.measureSag()
+            sags[truck] = nil
             local started = GetGameTimer()
             local ok, errorKey, value = tow.load(truck, car)
             local seconds = (GetGameTimer() - started) / 1000
             if check(ok, ('%s: loaded in %.1f s'):format(case.label, seconds), why(errorKey, value)) then
+                cableTaut(case.label .. ': the cable stays taut while loading', sags[truck])
                 local offset, turn = onBed(truck, car)
                 check(IsEntityAttachedToEntity(car, truck), case.label .. ': strapped to the truck')
                 check(math.abs(offset.x) < 0.25 and turn < 4.0, case.label .. ': straight in the middle of the bed',
@@ -465,8 +475,10 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
                 check(offset.z > 0.3, case.label .. ': up on the bed', ('z %+.2f m'):format(offset.z))
                 check(bagIs(truck, 'sw_tow:winch', function(v) return type(v) == 'table' and v.phase == 'secured' end),
                     case.label .. ': the server counts it as secured')
+                sags[truck] = nil
                 ok, errorKey = tow.unload(truck)
                 check(ok, case.label .. ': unloaded', why(errorKey))
+                cableTaut(case.label .. ': the cable stays taut while unloading', sags[truck])
                 Wait(500)
                 check(standsOnGround(car), case.label .. ': stands on its wheels behind the truck',
                     ('height %.2f m, roll %.0f°'):format(GetEntityHeightAboveGround(car), GetEntityRoll(car)))

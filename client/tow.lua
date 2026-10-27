@@ -271,12 +271,15 @@ end, false)
 
 ---@type table<integer, integer[]> truck entity -> rope handles (two segments)
 local ropes = {}
+---@type table<integer, integer> rope -> game time it was made (remade segments)
+local madeAt = {}
 
 local function removeRope(truck)
     local list = ropes[truck]
     ropes[truck] = nil
     if not list then return end
     for i = 1, #list do
+        madeAt[list[i]] = nil
         if DoesRopeExist(list[i]) then DeleteRope(list[i]) end
     end
 end
@@ -311,16 +314,48 @@ local function newSegment(a, b)
         false, false, false, 1.0, false)
 end
 
----Pins a segment's ends and pulls it straight. Pinned each frame instead of attaching the rope to
----the vehicles: an attached rope is a physical constraint and would pull on the vehicle.
+---How far the middle of a segment hangs below the straight line between its ends, in metres.
+local function sag(rope, a, b)
+    local count = GetRopeVertexCount(rope)
+    if count < 3 then return 0.0 end
+    local mid = GetRopeVertexCoord(rope, count // 2)
+    local ab, am = b - a, mid - a
+    local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
+    local t = lengthSq > 0.0 and (am.x * ab.x + am.y * ab.y + am.z * ab.z) / lengthSq or 0.0
+    return #(mid - (a + ab * math.max(0.0, math.min(1.0, t))))
+end
+
+-- More sag than this and the segment is made again at the right length, at most every REMAKE_MS.
+local MAX_SAG, REMAKE_MS = 0.35, 400
+
+---Pins a segment's ends and pulls it straight; returns the segment (a new one if it had to be
+---remade). Pinned each frame instead of attaching the rope to the vehicles: an attached rope is a
+---physical constraint and would pull on the vehicle.
+---The game shortens a rope only while it winds it in: without winding, the cable keeps its old
+---length as the car comes up the ramps and the slack sags through the ground. Lengthening (when
+---unloading) works without it.
+---@return integer rope
 local function holdSegment(rope, a, b)
+    local length = math.max(0.1, #(a - b))
+    if RopeGetDistanceBetweenEnds(rope) > length + 0.02 then StartRopeWinding(rope) else StopRopeWinding(rope) end
+    RopeForceLength(rope, length)
     local last = GetRopeVertexCount(rope) - 1
     if last > 0 then
         PinRopeVertex(rope, 0, a.x, a.y, a.z)
         PinRopeVertex(rope, last, b.x, b.y, b.z)
     end
-    RopeForceLength(rope, math.max(0.1, #(a - b)))
+    if sag(rope, a, b) > MAX_SAG and GetGameTimer() - (madeAt[rope] or 0) > REMAKE_MS then
+        madeAt[rope] = nil
+        DeleteRope(rope)
+        rope = newSegment(a, b)
+        madeAt[rope] = GetGameTimer()
+    end
+    return rope
 end
+
+-- Largest sag seen per truck while /swtow_test measures it (nil: not measuring).
+---@type table<integer, number>?
+local sagSeen
 
 ---@type table<integer, integer> truck entity -> winch target this client is watching
 local watching = {}
@@ -348,8 +383,11 @@ local function watchWinch(truck, target)
             SetEntityNoCollisionEntity(target, cache.ped, true)
             if list then
                 local w, bend, h = cablePath(truck, target, roller)
-                holdSegment(list[1], w, bend)
-                holdSegment(list[2], bend, h)
+                if sagSeen then
+                    sagSeen[truck] = math.max(sagSeen[truck] or 0.0, sag(list[1], w, bend), sag(list[2], bend, h))
+                end
+                list[1] = holdSegment(list[1], w, bend)
+                list[2] = holdSegment(list[2], bend, h)
             end
             motor.keep()
             Wait(0)
@@ -399,4 +437,9 @@ return {
     secureInPlace = secureInPlace,
     toggleRamps = toggleRamps,
     isBusy = function() return busy end,
+    ---/swtow_test: start measuring how far the cable sags; returns the largest sag per truck so far.
+    measureSag = function()
+        sagSeen = sagSeen or {}
+        return sagSeen
+    end,
 }
