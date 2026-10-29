@@ -271,12 +271,15 @@ end, false)
 
 ---@type table<integer, integer[]> truck entity -> rope handles (two segments)
 local ropes = {}
+---@type table<integer, { a: vector3, b: vector3, frame: integer }> rope -> the line it was last pinned on, and when
+local pinnedOn = {}
 
 local function removeRope(truck)
     local list = ropes[truck]
     ropes[truck] = nil
     if not list then return end
     for i = 1, #list do
+        pinnedOn[list[i]] = nil
         if DoesRopeExist(list[i]) then DeleteRope(list[i]) end
     end
 end
@@ -304,24 +307,6 @@ local function cablePath(truck, target, roller)
     return w, (w + h) / 2, h
 end
 
----A cable segment, taut from the start: no slack to sag through the ground.
-local function newSegment(a, b)
-    local length = #(a - b)
-    return AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
-        false, false, false, 1.0, false)
-end
-
----How far the middle of a segment hangs below the straight line between its ends, in metres.
-local function sag(rope, a, b)
-    local count = GetRopeVertexCount(rope)
-    if count < 3 then return 0.0 end
-    local mid = GetRopeVertexCoord(rope, count // 2)
-    local ab, am = b - a, mid - a
-    local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
-    local t = lengthSq > 0.0 and (am.x * ab.x + am.y * ab.y + am.z * ab.z) / lengthSq or 0.0
-    return #(mid - (a + ab * math.max(0.0, math.min(1.0, t))))
-end
-
 ---Holds a segment straight between its ends: every point of the rope is pinned on the line, each
 ---frame. A winch cable under load is straight, and this way the game's rope physics never moves it:
 ---no sag through the ground, no swinging, whether it gets shorter (loading) or longer (unloading).
@@ -336,10 +321,45 @@ local function holdSegment(rope, a, b)
         local p = a + step * i
         PinRopeVertex(rope, i, p.x, p.y, p.z)
     end
+    pinnedOn[rope] = { a = a, b = b, frame = GetFrameCount() }
 end
 
+---A cable segment, pinned straight in the frame it is made: a new rope lies in whatever direction
+---the game gives it, and drawn so for even one frame it would flick out to the side.
+local function newSegment(a, b)
+    local length = #(a - b)
+    local rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
+        false, false, false, 1.0, false)
+    holdSegment(rope, a, b)
+    return rope
+end
+
+---How far the cable as drawn strays from the line it was pinned on: the farthest of its points, in
+---metres. Read before this frame's pinning, the points are where the last frame drew them. Nil
+---until the segment has been pinned in an earlier frame and drawn once.
+---@return number?
+local function sag(rope)
+    local line = pinnedOn[rope]
+    if not line or line.frame >= GetFrameCount() then return end
+    local a, ab = line.a, line.b - line.a
+    local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
+    local worst = 0.0
+    for i = 0, GetRopeVertexCount(rope) - 1 do
+        local p = GetRopeVertexCoord(rope, i)
+        local ap = p - a
+        local t = lengthSq > 0.0 and (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / lengthSq or 0.0
+        worst = math.max(worst, #(p - (a + ab * math.max(0.0, math.min(1.0, t)))))
+    end
+    return worst
+end
+
+---@class SwSag
+---@field metres number largest sag seen
+---@field segment integer 1 winch to bend, 2 bend to hook
+---@field frame integer frames since the cable was made
+
 -- Largest sag seen per truck while /swtow_test measures it (nil: not measuring).
----@type table<integer, number>?
+---@type table<integer, SwSag>?
 local sagSeen
 
 ---@type table<integer, integer> truck entity -> winch target this client is watching
@@ -363,14 +383,22 @@ local function watchWinch(truck, target)
     end
     CreateThread(function()
         local motor = sounds.loop('winch', truck)
+        local frame = 0
         while watching[truck] == target do
             if not DoesEntityExist(truck) or not DoesEntityExist(target) then break end
             SetEntityNoCollisionEntity(target, cache.ped, true)
             if list then
-                local w, bend, h = cablePath(truck, target, roller)
+                frame = frame + 1
                 if sagSeen then
-                    sagSeen[truck] = math.max(sagSeen[truck] or 0.0, sag(list[1], w, bend), sag(list[2], bend, h))
+                    for segment = 1, 2 do
+                        local metres = sag(list[segment])
+                        local worst = sagSeen[truck]
+                        if metres and (not worst or metres > worst.metres) then
+                            sagSeen[truck] = { metres = metres, segment = segment, frame = frame }
+                        end
+                    end
                 end
+                local w, bend, h = cablePath(truck, target, roller)
                 holdSegment(list[1], w, bend)
                 holdSegment(list[2], bend, h)
             end
@@ -422,7 +450,8 @@ return {
     secureInPlace = secureInPlace,
     toggleRamps = toggleRamps,
     isBusy = function() return busy end,
-    ---/swtow_test: start measuring how far the cable sags; returns the largest sag per truck so far.
+    ---/swtow_test: start measuring how far the cable sags; returns the largest sag per truck so far
+    ---(SwSag: metres, which segment, on which frame).
     measureSag = function()
         sagSeen = sagSeen or {}
         return sagSeen

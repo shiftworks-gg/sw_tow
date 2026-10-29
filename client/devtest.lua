@@ -319,10 +319,12 @@ local function ownedCarToYard(withCall)
 end
 
 ---Checks the largest sag of the winch cable seen during a pull (tow.measureSag).
+---@param seen SwSag?
 local function cableTaut(what, seen)
     if not config.flatbed.rope then return end
     if not seen then return check(false, what, 'no cable was drawn') end
-    check(seen < 0.5, what, ('sagged up to %.2f m'):format(seen))
+    check(seen.metres < 0.1, what, ('sagged up to %.2f m, %s, frame %d'):format(seen.metres,
+        seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame))
 end
 
 ---Waits for a truck state bag to read as wanted (the server's change arrives a moment later).
@@ -515,12 +517,15 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     local min = GetModelDimensions(GetEntityModel(truck))
     local driven = spawnVehicle('asea', behind(truck, 'asea', 3.0))
     if driven and control(driven) then
-        -- As if driven up the ramps: set down on the middle of the bed, a little above the height the
-        -- same model sat at when winched on, then settled.
+        -- As if driven up the ramps: held on the middle of the bed a little above the height the same
+        -- model sat at when winched on, then let go to settle. Held by an attachment, not moved with
+        -- SetEntityCoords: that put the car on the ground under the bed (z -0.52 in truck space,
+        -- whatever height was asked for) and the truck's collision threw it off the side.
         local y = (min.y + config.flatbed.bedFrontY) / 2
-        local onTop = GetOffsetFromEntityInWorldCoords(truck, 0.0, y, (restZ or 1.4) + 0.15)
-        SetEntityCoords(driven, onTop.x, onTop.y, onTop.z, false, false, false, false)
-        SetEntityHeading(driven, GetEntityHeading(truck))
+        local z = (restZ or 1.4) + 0.1
+        AttachEntityToEntity(driven, truck, 0, 0.0, y, z, 0.0, 0.0, 0.0, false, false, false, false, 2, true)
+        Wait(0)
+        DetachEntity(driven, true, true)
         SetEntityVelocity(driven, 0.0, 0.0, 0.0)
         -- Where it goes, for the failure message: truck space right after, at 0.25 s, 1 s and at rest.
         local function at()
@@ -528,8 +533,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
             local p = GetOffsetFromEntityGivenWorldCoords(truck, c.x, c.y, c.z)
             return ('(%+.2f %+.2f %+.2f)'):format(p.x, p.y, p.z)
         end
-        local path = { ('set at z %+.2f, owner %s'):format((restZ or 1.4) + 0.15,
-            NetworkHasControlOfEntity(driven) and 'me' or 'other'), at() }
+        local path = { ('let go at z %+.2f, owner %s'):format(z, NetworkHasControlOfEntity(driven) and 'me' or 'other'), at() }
         Wait(250)
         path[#path + 1] = at()
         Wait(750)
