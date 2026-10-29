@@ -323,8 +323,8 @@ end
 local function cableTaut(what, seen)
     if not config.flatbed.rope then return end
     if not seen then return check(false, what, 'no cable was drawn') end
-    check(seen.metres < 0.1, what, ('sagged up to %.2f m, %s, frame %d'):format(seen.metres,
-        seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame))
+    check(seen.metres < 0.1, what, ('sagged up to %.2f m, %s, frame %d, points %d → %d'):format(seen.metres,
+        seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame, seen.pinned, seen.drawn))
 end
 
 ---Waits for a truck state bag to read as wanted (the server's change arrives a moment later).

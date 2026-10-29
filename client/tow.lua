@@ -271,7 +271,7 @@ end, false)
 
 ---@type table<integer, integer[]> truck entity -> rope handles (two segments)
 local ropes = {}
----@type table<integer, { a: vector3, b: vector3, frame: integer }> rope -> the line it was last pinned on, and when
+---@type table<integer, { a: vector3, b: vector3, frame: integer, count: integer }> rope -> the line it was last pinned on, when, and how many points it had
 local pinnedOn = {}
 
 local function removeRope(truck)
@@ -312,22 +312,24 @@ end
 ---no sag through the ground, no swinging, whether it gets shorter (loading) or longer (unloading).
 ---Pinned instead of attached to the vehicles: an attached rope is a physical constraint and would
 ---pull on the vehicle.
+---The rope keeps the length it was made with: the pins alone give its shape. Changing the length
+---makes the game add or drop points after they are pinned, and the new point is drawn off the line
+---for a frame, about one point spacing (0.5 m) out.
 local function holdSegment(rope, a, b)
-    RopeForceLength(rope, math.max(0.1, #(a - b)))
-    local last = GetRopeVertexCount(rope) - 1
-    if last < 1 then return end
-    local step = (b - a) / last
-    for i = 0, last do
+    local count = GetRopeVertexCount(rope)
+    if count < 2 then return end
+    local step = (b - a) / (count - 1)
+    for i = 0, count - 1 do
         local p = a + step * i
         PinRopeVertex(rope, i, p.x, p.y, p.z)
     end
-    pinnedOn[rope] = { a = a, b = b, frame = GetFrameCount() }
+    pinnedOn[rope] = { a = a, b = b, frame = GetFrameCount(), count = count }
 end
 
 ---A cable segment, pinned straight in the frame it is made: a new rope lies in whatever direction
 ---the game gives it, and drawn so for even one frame it would flick out to the side.
 local function newSegment(a, b)
-    local length = #(a - b)
+    local length = math.max(0.1, #(a - b))
     local rope = AddRope(a.x, a.y, a.z, 0.0, 0.0, 0.0, math.max(length + 1.0, 40.0), 4, length, 0.1, 20.0,
         false, false, false, 1.0, false)
     holdSegment(rope, a, b)
@@ -336,27 +338,31 @@ end
 
 ---How far the cable as drawn strays from the line it was pinned on: the farthest of its points, in
 ---metres. Read before this frame's pinning, the points are where the last frame drew them. Nil
----until the segment has been pinned in an earlier frame and drawn once.
----@return number?
+---until the segment has been pinned in an earlier frame and drawn once. Also returns how many
+---points it had when pinned and now.
+---@return number? metres, integer? pinned, integer? now
 local function sag(rope)
     local line = pinnedOn[rope]
     if not line or line.frame >= GetFrameCount() then return end
     local a, ab = line.a, line.b - line.a
     local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
     local worst = 0.0
-    for i = 0, GetRopeVertexCount(rope) - 1 do
+    local count = GetRopeVertexCount(rope)
+    for i = 0, count - 1 do
         local p = GetRopeVertexCoord(rope, i)
         local ap = p - a
         local t = lengthSq > 0.0 and (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / lengthSq or 0.0
         worst = math.max(worst, #(p - (a + ab * math.max(0.0, math.min(1.0, t)))))
     end
-    return worst
+    return worst, line.count, count
 end
 
 ---@class SwSag
 ---@field metres number largest sag seen
 ---@field segment integer 1 winch to bend, 2 bend to hook
 ---@field frame integer frames since the cable was made
+---@field pinned integer points when pinned
+---@field drawn integer points when read back
 
 -- Largest sag seen per truck while /swtow_test measures it (nil: not measuring).
 ---@type table<integer, SwSag>?
@@ -391,10 +397,11 @@ local function watchWinch(truck, target)
                 frame = frame + 1
                 if sagSeen then
                     for segment = 1, 2 do
-                        local metres = sag(list[segment])
+                        local metres, pinned, drawn = sag(list[segment])
                         local worst = sagSeen[truck]
                         if metres and (not worst or metres > worst.metres) then
-                            sagSeen[truck] = { metres = metres, segment = segment, frame = frame }
+                            sagSeen[truck] = { metres = metres, segment = segment, frame = frame,
+                                pinned = pinned --[[@as integer]], drawn = drawn --[[@as integer]] }
                         end
                     end
                 end
