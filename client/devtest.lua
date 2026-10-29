@@ -334,11 +334,12 @@ local function bagIs(entity, key, predicate, timeout)
     return waitFor(function() return predicate(Entity(entity).state[key]) end, timeout or 2000) == true
 end
 
----Reads the panel until its title is the wanted text (it refreshes once a second).
+---Reads the panel until its title, or the kind of job above it, is the wanted text (it refreshes
+---once a second).
 local function panelTitle(key)
     local texts = waitFor(function()
         local t = panel.probe()
-        return t and t.title == locale(key) and t or nil
+        return t and (t.title == locale(key) or t.kind == locale(key)) and t or nil
     end, 2500)
     return texts ~= nil, texts or panel.probe()
 end
@@ -417,7 +418,10 @@ scenario('shift', 'Clock in, panel, trucks, clock out', function()
     end, 3000)
     if config.ui.enabled then
         check(texts, 'the shift panel is visible')
-        if texts then check(texts.title == locale('panel.title_idle'), 'the panel title says on shift', texts.title) end
+        if texts then
+            local onShift = locale('panel.title_idle')
+            check(texts.title == onShift or (texts.kind or ''):find(onShift, 1, true), 'the panel says on shift', texts.title)
+        end
     end
 
     ok, errorKey = shift.takeTruck(FLATBED)
@@ -428,8 +432,6 @@ scenario('shift', 'Clock in, panel, trucks, clock out', function()
     check(bagIs(truck, 'sw_tow:method', function(v) return v == 'flatbed' end), 'it is marked as a flatbed')
     Wait(5100)
     check(select(2, shift.takeTruck(FLATBED)) == 'garage.already_out', 'a second truck is refused')
-    texts = panel.probe()
-    if texts then check(texts.truck:find(plate, 1, true), 'the panel shows the truck', texts.truck) end
 
     moveVehicle(truck, config.garage.spawn.xyz + vec3(60.0, 0.0, 0.0), config.garage.spawn.w)
     check(select(2, shift.returnTruck()) == 'garage.too_far', 'returning it far from the garage is refused')

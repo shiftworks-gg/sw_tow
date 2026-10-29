@@ -6,75 +6,8 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <section class="sw-panel" id="panel" aria-live="polite" hidden>
-    <header class="sw-head">
-      <div class="sw-head__top">
-        <div class="sw-brand">
-          <img class="sw-brand__logo" id="logo" alt="" hidden>
-          <span class="sw-label" id="label">SHIFTWORKS · TOW</span>
-        </div>
-        <span class="sw-clock"><span class="sw-clock__dot"></span><span class="sw-num" id="clock">00:00</span></span>
-      </div>
-      <h2 class="sw-title" id="title">On shift</h2>
-      <div class="sw-hazard" aria-hidden="true"></div>
-    </header>
-
-    <div class="sw-job" id="job" hidden>
-      <div class="sw-job__top">
-        <span class="sw-plate" id="callPlate">—</span>
-        <span class="sw-route">
-          <span class="sw-route__to" id="routeTo"></span>
-          <span class="sw-route__where" id="routeWhere"></span>
-        </span>
-        <span class="sw-route__dist sw-num" id="distance">—</span>
-      </div>
-      <div class="sw-timer" id="timer" hidden>
-        <div class="sw-timer__top">
-          <span class="sw-label" data-text="deadline"></span>
-          <span class="sw-timer__time sw-num" id="timerTime">00:00</span>
-        </div>
-        <div class="sw-timer__track"><div class="sw-timer__fill" id="timerFill"></div><div class="sw-timer__ticks"></div></div>
-      </div>
-    </div>
-
-    <div class="sw-idle" id="idle">
-      <span class="sw-idle__pulse" aria-hidden="true"></span>
-      <span data-text="waiting"></span>
-      <span class="sw-idle__count sw-num" id="openCount" hidden></span>
-    </div>
-
-    <div class="sw-rows">
-      <div class="sw-row">
-        <span class="sw-row__label" data-icon="truck" data-text="truck"></span>
-        <span class="sw-row__value" id="truck"><span id="truckName">—</span><span class="sw-num sw-muted" id="truckPlate"></span></span>
-      </div>
-      <div class="sw-row">
-        <span class="sw-row__label" data-icon="package" data-text="cargo"></span>
-        <span class="sw-row__value">
-          <span class="sw-chip" id="status" hidden></span>
-          <span class="sw-num" id="cargo">—</span>
-        </span>
-      </div>
-    </div>
-
-    <div class="sw-stats">
-      <div class="sw-stat">
-        <span class="sw-label" data-text="tows"></span>
-        <span class="sw-stat__value sw-num" id="tows">0</span>
-      </div>
-      <div class="sw-stat">
-        <span class="sw-label" data-text="earned"></span>
-        <span class="sw-stat__value sw-num" id="earned">$0</span>
-        <span class="sw-payout sw-num" id="payout"></span>
-      </div>
-    </div>
-
-    <footer class="sw-foot">
-      <span class="sw-key" id="key">F6</span>
-      <span class="sw-foot__text" data-text="calls"></span>
-      <span class="sw-badge sw-num" id="openBadge" hidden>0</span>
-    </footer>
-  </section>
+  <!-- app.js builds the layout of the configured theme inside this section. -->
+  <section class="sw" id="panel" aria-live="polite" hidden></section>
   <script src="app.js"></script>
 </body>
 </html>

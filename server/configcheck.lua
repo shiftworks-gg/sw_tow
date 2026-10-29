@@ -86,7 +86,7 @@ function checker.run(cfg)
     number('ui.top', 0, 90)
     number('ui.scale', 0.8, 1.3)
     -- Newer keys may be missing from a config kept from an older version: the panel uses defaults.
-    if get('ui.theme') ~= nil then oneOf('ui.theme', { 'shiftworks', 'ox', 'minimal' }) end
+    if get('ui.theme') ~= nil then oneOf('ui.theme', { 'shiftworks', 'ox', 'mission', 'compact', 'minimal' }) end
     if get('ui.opacity') ~= nil then number('ui.opacity', 0.6, 1.0) end
     local function colour(value) return type(value) == 'string' and value:match('^#%x%x%x%x%x%x$') ~= nil end
     if get('ui.accent') ~= 'auto' and not colour(get('ui.accent')) then

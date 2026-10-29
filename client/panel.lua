@@ -11,10 +11,12 @@ local stats = { deliveries = 0, earned = 0 }
 local shiftStarted ---@type integer? game timer when this shift began
 
 local STRING_KEYS = {
-    'truck', 'cargo', 'deadline', 'calls', 'empty', 'no_call', 'waiting', 'open_calls', 'km', 'm',
-    'tows', 'earned', 'to_pickup', 'to_yard',
     'title_idle', 'title_player', 'title_police', 'title_contract', 'title_abandoned',
-    'status_winching', 'status_secured', 'status_hooked', 'status_lowering',
+    'do_pickup', 'do_load', 'do_deliver', 'step_pickup', 'step_load', 'step_deliver',
+    'at_pickup', 'at_yard', 'left', 'distance', 'deliver_within',
+    'waiting', 'calls_open', 'open_short', 'take_hint', 'no_calls',
+    'cargo', 'empty', 'earned', 'tows', 'km', 'm',
+    'status_winching', 'status_lowering', 'status_secured', 'status_hooked',
 }
 
 ---The server's ox_lib colour, when its owner set one (setr ox:primaryColor), so the panel matches
@@ -46,11 +48,6 @@ local function init()
             key = config.calls.listKey,
         },
     })
-end
-
-local function vehicleName(vehicle)
-    local label = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
-    return label ~= 'NULL' and label or GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
 end
 
 local function nearestYard(from)
@@ -87,7 +84,6 @@ local function snapshot()
     }
 
     if truck then
-        state.truck = { name = vehicleName(truck), plate = util.trimPlate(GetVehicleNumberPlateText(truck)) }
         local cargoNet = Entity(truck).state['sw_tow:cargo']
         local cargo = cargoNet and NetworkDoesEntityExistWithNetworkId(cargoNet) and NetToVeh(cargoNet)
         if cargo and cargo ~= 0 then
@@ -134,7 +130,7 @@ local panel = {}
 local probeWaiting
 
 ---What the panel shows right now, read from the page itself (for /swtow_test).
----@return table? texts { visible, title, truck, cargo, call, distance, shift, timer }, nil when the page does not answer
+---@return table? texts { visible, title, kind, cargo, distance, shift, timer }, nil when the page does not answer
 function panel.probe()
     if not ui.enabled then return end
     probeWaiting = promise.new()
