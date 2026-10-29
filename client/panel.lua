@@ -15,7 +15,7 @@ local STRING_KEYS = {
     'do_pickup', 'do_load', 'do_deliver', 'step_pickup', 'step_load', 'step_deliver',
     'at_pickup', 'at_yard', 'left', 'distance', 'deliver_within',
     'waiting', 'calls_open', 'open_short', 'take_hint', 'no_calls',
-    'cargo', 'empty', 'earned', 'tows', 'km', 'm',
+    'truck', 'no_truck', 'cargo', 'empty', 'earned', 'tows', 'km', 'm',
     'status_winching', 'status_lowering', 'status_secured', 'status_hooked',
 }
 
@@ -48,6 +48,12 @@ local function init()
             key = config.calls.listKey,
         },
     })
+end
+
+local function vehicleName(vehicle)
+    local model = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+    local label = GetLabelText(model)
+    return label ~= 'NULL' and label or model
 end
 
 local function nearestYard(from)
@@ -84,6 +90,7 @@ local function snapshot()
     }
 
     if truck then
+        state.truck = { name = vehicleName(truck), plate = util.trimPlate(GetVehicleNumberPlateText(truck)) }
         local cargoNet = Entity(truck).state['sw_tow:cargo']
         local cargo = cargoNet and NetworkDoesEntityExistWithNetworkId(cargoNet) and NetToVeh(cargoNet)
         if cargo and cargo ~= 0 then
@@ -130,7 +137,7 @@ local panel = {}
 local probeWaiting
 
 ---What the panel shows right now, read from the page itself (for /swtow_test).
----@return table? texts { visible, title, kind, cargo, distance, shift, timer }, nil when the page does not answer
+---@return table? texts { visible, title, kind, truck, cargo, distance, shift, timer }, nil when the page does not answer
 function panel.probe()
     if not ui.enabled then return end
     probeWaiting = promise.new()

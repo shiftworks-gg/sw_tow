@@ -158,6 +158,8 @@
     "open_short": "%s open",
     "take_hint": "Press {key} to take one.",
     "no_calls": "No calls right now. New ones show up here.",
+    "truck": "Truck",
+    "no_truck": "No truck yet. Take one at the garage.",
     "cargo": "Cargo",
     "empty": "Empty",
     "tows": "Tows",

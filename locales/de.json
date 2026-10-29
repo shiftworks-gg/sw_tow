@@ -158,6 +158,8 @@
     "open_short": "%s offen",
     "take_hint": "Mit {key} einen annehmen.",
     "no_calls": "Gerade keine Aufträge. Neue erscheinen hier.",
+    "truck": "Wagen",
+    "no_truck": "Noch kein Wagen. Hol einen in der Garage.",
     "cargo": "Ladung",
     "empty": "Leer",
     "tows": "Fahrten",

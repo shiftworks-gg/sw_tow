@@ -12,6 +12,7 @@
     link: '<path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/>',
     yard: '<path d="M3 21v-13l9 -4l9 4v13"/><path d="M13 13h4v8h-10v-6h6"/><path d="M13 21v-9a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v3"/>',
     check: '<path d="M5 12l5 5l10 -10"/>',
+    truck: '<path d="M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5"/>',
   };
 
   // ox_lib colours (Mantine's default palette): ox:primaryColor names one, ox:primaryShade picks 0-9.
@@ -83,6 +84,11 @@
         </div>
         <div class="card__idle if-idle"><div class="lbl" data-t="waiting"></div><div class="card__hint" data-b="hint"></div></div>
         ${steps()}
+        <div class="card__truck">
+          ${icon('truck')}
+          <span class="if-truck card__truck-name" data-b="truckName"></span><span class="if-truck tag" data-b="truckPlate"></span>
+          <span class="if-notruck muted" data-t="no_truck"></span>
+        </div>
         <div class="card__foot">
           <div><span class="lbl"><span data-t="cargo"></span> <span class="status if-cargo" data-b="status"></span></span>
             <span class="val cargo"><span class="plate if-cargo" data-b="plate"></span><span class="muted if-empty" data-t="empty"></span></span></div>
@@ -103,6 +109,7 @@
         <div class="mission__bar if-timer"><i data-b="bar"></i></div>
         <div class="mission__foot if-idle" data-b="hint"></div>
         <div class="mission__foot if-cargo"><span class="plate" data-b="plate"></span><span class="status" data-b="status"></span></div>
+        <div class="mission__foot">${icon('truck')}<span class="if-truck" data-b="truckName"></span><span class="if-truck tag" data-b="truckPlate"></span><span class="if-notruck" data-t="no_truck"></span></div>
         <div class="mission__foot">
           <span class="payout" data-b="payout"></span>
           <span data-t="earned"></span><span class="num" data-b="earned"></span><span class="sep"></span><span data-t="tows"></span><span class="num" data-b="tows"></span>
@@ -118,6 +125,7 @@
           <div class="pill__side if-idle"><span class="hint" data-b="hint"></span></div>
         </div>
         <div class="pill pill--sm">
+          ${icon('truck')}<span class="if-truck" data-b="truckName"></span><span class="if-notruck" data-t="no_truck"></span><span class="sep"></span>
           <span class="plate if-cargo" data-b="plate"></span><span class="status if-cargo" data-b="status"></span><span class="sep if-cargo"></span>
           <span data-t="earned"></span><span class="num" data-b="earned"></span><span class="sep"></span><span data-t="tows"></span><span class="num" data-b="tows"></span>
           <span class="payout" data-b="payout"></span>
@@ -263,6 +271,7 @@
     c.toggle('is-idle', !job);
     c.toggle('has-timer', timed);
     c.toggle('has-cargo', !!state.cargo);
+    c.toggle('has-truck', !!state.truck);
     c.toggle('has-open', !!state.open);
     c.toggle('is-late', late);
     for (let i = 1; i <= 3; i++) c.toggle('step-' + i, step === i);
@@ -297,6 +306,8 @@
       (binds.timer || []).forEach((el) => el.classList.toggle('late', late));
     }
 
+    set('truckName', state.truck ? state.truck.name : '');
+    set('truckPlate', state.truck ? state.truck.plate : '');
     set('plate', state.cargo || '');
     (binds.status || []).forEach((el) => {
       el.className = 'status ' + (STATUS[state.status] || '') + (el.classList.contains('if-cargo') ? ' if-cargo' : '');
@@ -326,6 +337,7 @@
       post('probe', {
         visible: !panel.hidden,
         title: read('title'), kind: read('kind'),
+        truck: has('has-truck') ? `${read('truckName')} ${read('truckPlate')}` : null,
         cargo: has('has-cargo') ? read('plate') : text('empty'),
         distance: has('is-job') ? read('distance') : null,
         shift: `${read('tows')} · ${read('earned')}`,
