@@ -85,8 +85,26 @@ function checker.run(cfg)
     oneOf('ui.position', { 'right', 'left' })
     number('ui.top', 0, 90)
     number('ui.scale', 0.8, 1.3)
-    if type(get('ui.accent')) ~= 'string' or not get('ui.accent'):match('^#%x%x%x%x%x%x$') then
-        problem('ui.accent', 'must be a colour like \'#ff7a2e\'')
+    -- Newer keys may be missing from a config kept from an older version: the panel uses defaults.
+    if get('ui.theme') ~= nil then oneOf('ui.theme', { 'shiftworks', 'ox', 'minimal' }) end
+    if get('ui.opacity') ~= nil then number('ui.opacity', 0.6, 1.0) end
+    local function colour(value) return type(value) == 'string' and value:match('^#%x%x%x%x%x%x$') ~= nil end
+    if get('ui.accent') ~= 'auto' and not colour(get('ui.accent')) then
+        problem('ui.accent', 'must be \'auto\' or a colour like \'#ff7a2e\'')
+    end
+    local colors = get('ui.colors')
+    if colors ~= nil and type(colors) ~= 'table' then
+        problem('ui.colors', 'must be a table')
+    elseif colors then
+        for _, key in ipairs({ 'surface', 'header', 'text', 'muted', 'line' }) do
+            if colors[key] ~= nil and not colour(colors[key]) then
+                problem('ui.colors.' .. key, 'must be a colour like \'#172027\'')
+            end
+        end
+    end
+    local font = get('ui.font')
+    if font ~= nil and (type(font) ~= 'table' or type(font.family) ~= 'string' or (font.url ~= nil and type(font.url) ~= 'string')) then
+        problem('ui.font', 'must be nil or { family = \'Name\', url = \'nui://...\' }')
     end
 
     oneOf('adapters.garage', { 'auto', 'qbx_garages', 'qb-garages', 'none' })

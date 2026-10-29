@@ -65,7 +65,7 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `contracts.enabled` | true | NPC jobs when no player is calling |
 | `abandoned.minutes`, `abandoned.owned` | 30, false | When a left vehicle becomes a call; whether owned vehicles count |
 | `sounds` | game sounds on | Ramps, winch motor, straps and tow arm; each can be swapped or muted |
-| `ui` | right edge, orange | Shift panel side, height, size, accent colour, header label, logo |
+| `ui` | `shiftworks` theme, right edge, accent `auto` | Shift panel theme (`shiftworks`, `ox`, `minimal`), accent (follows `ox:primaryColor` when you set it), colours, font, opacity, side, height, size, header label, logo |
 
 Discord logging: set `set sw_tow:webhook "https://discord.com/api/webhooks/..."` in `server.cfg`. Keep webhooks out of config files.
 

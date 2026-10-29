@@ -52,9 +52,11 @@ function calls.count(filter)
     return n
 end
 
+---Tells everyone on shift that the list changed, with how many calls are open (for the panel).
 local function broadcast()
+    local open = calls.count(function(call) return call.status == 'open' end)
     for src in pairs(shift.all()) do
-        TriggerClientEvent('sw_tow:client:callsChanged', src)
+        TriggerClientEvent('sw_tow:client:callsChanged', src, open)
     end
 end
 

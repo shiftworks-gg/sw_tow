@@ -13,12 +13,22 @@ return {
 
     ui = {                       -- Shift panel shown while on shift. Restyle it here, no code changes needed.
         enabled = true,          -- false hides the panel; notifications and menus still work.
+        theme = 'shiftworks',    -- 'shiftworks' (steel header, hazard stripe) | 'ox' (looks like ox_lib menus) | 'minimal' (no header block, see-through).
+        accent = 'auto',         -- 'auto': your ox_lib colour if you set one (setr ox:primaryColor), else orange. Or a colour like '#ff7a2e'.
         position = 'right',      -- Screen edge: 'right' or 'left'.
         top = 32,                -- Distance from the top of the screen, in % of its height.
         scale = 1.0,             -- 0.8 to 1.3. Size of the whole panel.
-        accent = '#ff7a2e',      -- Main colour: timer bar and active marks. Text on it stays dark.
+        opacity = nil,           -- 0.6 to 1: how solid the background is. nil = the theme's (0.96, minimal 0.78).
         label = 'SHIFTWORKS · TOW', -- Small label in the header. Your server name works too.
         logo = nil,              -- Optional image in the header: a URL or 'nui://your_resource/logo.png'.
+        font = nil,              -- Match your other UIs: { family = 'Poppins', url = 'nui://your_ui/fonts/poppins.woff2' }. nil = the theme's fonts.
+        colors = {               -- Optional: any of these overrides the theme. Colours like '#172027'.
+            -- surface = '#172027',  -- Panel background.
+            -- header = '#3b4c59',   -- Header background.
+            -- text = '#e9eef1',     -- Main text.
+            -- muted = '#9aa8b2',    -- Labels and secondary text.
+            -- line = '#2a363f',     -- Dividers and border.
+        },
     },
 
     adapters = {                -- Which integration to use. 'auto' picks the first one that is running.

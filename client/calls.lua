@@ -251,12 +251,34 @@ RegisterNetEvent('sw_tow:client:callClosed', function(id)
     if id == activeCallId then clearRoute() end
 end)
 
-RegisterNetEvent('sw_tow:client:callsChanged', function()
-    -- The list is fetched when opened; nothing to keep in sync here yet.
+---How many calls are waiting for a worker; nil until the server first says.
+---@type integer?
+local openCount
+
+---@return integer?
+function calls.openCount()
+    return openCount
+end
+
+RegisterNetEvent('sw_tow:client:callsChanged', function(open)
+    -- The list itself is fetched when opened; the panel shows how many are waiting.
+    if type(open) == 'number' then openCount = open end
 end)
 
 AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)
-    if value then CreateThread(runRoute) else clearRoute() end
+    if not value then
+        openCount = nil
+        return clearRoute()
+    end
+    CreateThread(runRoute)
+    -- Calls opened before this shift: counted once, then kept up by callsChanged.
+    CreateThread(function()
+        local n = 0
+        for _, call in ipairs(calls.list()) do
+            if not call.mine then n = n + 1 end
+        end
+        openCount = openCount or n
+    end)
 end)
 
 return calls

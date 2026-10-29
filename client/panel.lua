@@ -8,12 +8,22 @@ local calls = require 'client.calls'
 local ui = config.ui
 local visible = false
 local stats = { deliveries = 0, earned = 0 }
+local shiftStarted ---@type integer? game timer when this shift began
 
 local STRING_KEYS = {
-    'truck', 'cargo', 'call', 'distance', 'shift', 'deadline', 'calls', 'empty', 'no_call', 'shift_value', 'km',
+    'truck', 'cargo', 'deadline', 'calls', 'empty', 'no_call', 'waiting', 'open_calls', 'km', 'm',
+    'tows', 'earned', 'to_pickup', 'to_yard',
     'title_idle', 'title_player', 'title_police', 'title_contract', 'title_abandoned',
-    'type_player', 'type_police', 'type_contract', 'type_abandoned',
+    'status_winching', 'status_secured', 'status_hooked', 'status_lowering',
 }
+
+---The server's ox_lib colour, when its owner set one (setr ox:primaryColor), so the panel matches
+---their menus and notifications.
+local function oxTheme()
+    local color = GetConvar('ox:primaryColor', '')
+    if color == '' then return end
+    return { color = color, shade = GetConvarInt('ox:primaryShade', 8) }
+end
 
 local function init()
     local strings = {}
@@ -22,7 +32,12 @@ local function init()
         type = 'init',
         strings = strings,
         ui = {
+            theme = ui.theme,
             accent = ui.accent,
+            ox = oxTheme(),
+            colors = ui.colors,
+            font = ui.font,
+            opacity = ui.opacity,
             position = ui.position,
             top = ui.top,
             scale = ui.scale,
@@ -38,41 +53,66 @@ local function vehicleName(vehicle)
     return label ~= 'NULL' and label or GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
 end
 
-local function nearestYardDistance(from)
-    local best
+local function nearestYard(from)
+    local best, bestDistance
     for _, yard in pairs(config.yards) do
         local d = #(from - yard.zone.coords)
-        if not best or d < best then best = d end
+        if not bestDistance or d < bestDistance then best, bestDistance = yard, d end
     end
-    return best
+    return best, bestDistance
+end
+
+local function streetAt(coords)
+    return GetStreetNameFromHashKey((GetStreetNameAtCoord(coords.x, coords.y, coords.z)))
+end
+
+---What the cargo is doing: the winch moving it, strapped, or on the tow arm.
+local function cargoStatus(truck)
+    local winch = Entity(truck).state['sw_tow:winch']
+    if type(winch) == 'table' then
+        if winch.phase == 'pulling' then return 'winching' end
+        if winch.phase == 'lowering' then return 'lowering' end
+        return 'secured'
+    end
+    return Entity(truck).state['sw_tow:method'] == 'hook' and 'hooked' or 'secured'
 end
 
 local function snapshot()
     local truck = shift.truck()
-    local state = { deliveries = stats.deliveries, earned = stats.earned }
-    local origin = GetEntityCoords(cache.ped)
+    local state = {
+        deliveries = stats.deliveries,
+        earned = stats.earned,
+        onShift = shiftStarted and (GetGameTimer() - shiftStarted) / 1000 or 0,
+        open = calls.openCount(),
+    }
 
     if truck then
-        state.truck = ('%s · %s'):format(vehicleName(truck), util.trimPlate(GetVehicleNumberPlateText(truck)))
+        state.truck = { name = vehicleName(truck), plate = util.trimPlate(GetVehicleNumberPlateText(truck)) }
         local cargoNet = Entity(truck).state['sw_tow:cargo']
         local cargo = cargoNet and NetworkDoesEntityExistWithNetworkId(cargoNet) and NetToVeh(cargoNet)
         if cargo and cargo ~= 0 then
             state.cargo = util.trimPlate(GetVehicleNumberPlateText(cargo))
-            local d = nearestYardDistance(GetEntityCoords(truck))
-            state.distance = d and d / 1000 or nil
+            state.status = cargoStatus(truck)
         end
     end
 
     local call = calls.active()
     if call then
-        local remaining = (call.deadline - GetGameTimer()) / 1000
         state.call = {
             type = call.type,
             plate = call.plate,
-            remaining = remaining,
+            remaining = (call.deadline - GetGameTimer()) / 1000,
             total = config.calls.deliverTimeout * 60,
         }
-        if not state.cargo then state.distance = #(origin - call.coords) / 1000 end
+    end
+
+    -- Where to go next: the yard with a vehicle on board, else the accepted call.
+    local origin = GetEntityCoords(truck or cache.ped)
+    if state.cargo then
+        local yard, distance = nearestYard(origin)
+        if yard then state.route = { to = 'yard', where = yard.label or streetAt(yard.zone.coords), metres = distance } end
+    elseif call then
+        state.route = { to = 'pickup', where = streetAt(call.coords), metres = #(origin - call.coords) }
     end
     return state
 end
@@ -117,7 +157,11 @@ RegisterNetEvent('sw_tow:client:shiftStats', function(deliveries, earned)
 end)
 
 AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), function(_, _, value)
-    if not value then stats.deliveries, stats.earned = 0, 0 end
+    if value then
+        shiftStarted = shiftStarted or GetGameTimer()
+    else
+        stats.deliveries, stats.earned, shiftStarted = 0, 0, nil
+    end
     show(ui.enabled and value == true)
 end)
 
@@ -127,6 +171,7 @@ RegisterNUICallback('ready', function(_, respond)
     if not ui.enabled then return end
     init()
     visible = false
+    if shift.onShift() then shiftStarted = shiftStarted or GetGameTimer() end
     show(shift.onShift())
 end)
 
