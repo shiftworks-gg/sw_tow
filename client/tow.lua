@@ -315,12 +315,16 @@ end
 ---The rope keeps the length it was made with: the pins alone give its shape. Changing the length
 ---makes the game add or drop points after they are pinned, and the new point is drawn off the line
 ---for a frame, about one point spacing (0.5 m) out.
+-- /swtow_test: let go of each point before pinning it again (to compare with pinning over the old pin).
+local repin = false
+
 local function holdSegment(rope, a, b)
     local count = GetRopeVertexCount(rope)
     if count < 2 then return end
     local step = (b - a) / (count - 1)
     for i = 0, count - 1 do
         local p = a + step * i
+        if repin then UnpinRopeVertex(rope, i) end
         PinRopeVertex(rope, i, p.x, p.y, p.z)
     end
     pinnedOn[rope] = { a = a, b = b, frame = GetFrameCount(), count = count }
@@ -336,33 +340,44 @@ local function newSegment(a, b)
     return rope
 end
 
+---@class SwSag
+---@field metres number how far the worst point strays from the line it was pinned on
+---@field segment integer 1 winch to bend, 2 bend to hook
+---@field frame integer frames since the cable was made
+---@field index integer the worst point (0 is the winch or bend end)
+---@field pinned integer points when pinned
+---@field drawn integer points when read back
+---@field at vector3 where the worst point was drawn, truck space
+---@field want vector3 where it was pinned, truck space
+---@field from vector3 the line it was pinned on, truck space
+---@field to vector3
+---@field speed number how fast the vehicle moved, m/s
+
 ---How far the cable as drawn strays from the line it was pinned on: the farthest of its points, in
----metres. Read before this frame's pinning, the points are where the last frame drew them. Nil
----until the segment has been pinned in an earlier frame and drawn once. Also returns how many
----points it had when pinned and now.
----@return number? metres, integer? pinned, integer? now
-local function sag(rope)
+---metres, with where it was and should be. Read before this frame's pinning, the points are where
+---the last frame drew them. Nil until the segment has been pinned in an earlier frame and drawn once.
+---@return SwSag?
+local function sag(rope, truck)
+    local function toTruck(p) return GetOffsetFromEntityGivenWorldCoords(truck, p.x, p.y, p.z) end
     local line = pinnedOn[rope]
     if not line or line.frame >= GetFrameCount() then return end
     local a, ab = line.a, line.b - line.a
     local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
-    local worst = 0.0
     local count = GetRopeVertexCount(rope)
+    local worst ---@type SwSag?
     for i = 0, count - 1 do
         local p = GetRopeVertexCoord(rope, i)
         local ap = p - a
         local t = lengthSq > 0.0 and (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / lengthSq or 0.0
-        worst = math.max(worst, #(p - (a + ab * math.max(0.0, math.min(1.0, t)))))
+        local off = #(p - (a + ab * math.max(0.0, math.min(1.0, t))))
+        if not worst or off > worst.metres then
+            local want = a + ab * (line.count > 1 and math.min(i, line.count - 1) / (line.count - 1) or 0.0)
+            worst = { metres = off, segment = 0, frame = 0, speed = 0.0, index = i, pinned = line.count, drawn = count,
+                at = toTruck(p), want = toTruck(want), from = toTruck(line.a), to = toTruck(line.b) }
+        end
     end
-    return worst, line.count, count
+    return worst
 end
-
----@class SwSag
----@field metres number largest sag seen
----@field segment integer 1 winch to bend, 2 bend to hook
----@field frame integer frames since the cable was made
----@field pinned integer points when pinned
----@field drawn integer points when read back
 
 -- Largest sag seen per truck while /swtow_test measures it (nil: not measuring).
 ---@type table<integer, SwSag>?
@@ -397,17 +412,22 @@ local function watchWinch(truck, target)
                 frame = frame + 1
                 if sagSeen then
                     for segment = 1, 2 do
-                        local metres, pinned, drawn = sag(list[segment])
+                        local seen = sag(list[segment], truck)
                         local worst = sagSeen[truck]
-                        if metres and (not worst or metres > worst.metres) then
-                            sagSeen[truck] = { metres = metres, segment = segment, frame = frame,
-                                pinned = pinned --[[@as integer]], drawn = drawn --[[@as integer]] }
+                        if seen and (not worst or seen.metres > worst.metres) then
+                            seen.segment, seen.frame, seen.speed = segment, frame, GetEntitySpeed(target)
+                            sagSeen[truck] = seen
                         end
                     end
                 end
                 local w, bend, h = cablePath(truck, target, roller)
                 holdSegment(list[1], w, bend)
                 holdSegment(list[2], bend, h)
+                if sagSeen then
+                    -- Where the cable should be, for the tester to compare with the drawn one.
+                    DrawLine(w.x, w.y, w.z, bend.x, bend.y, bend.z, 255, 40, 40, 255)
+                    DrawLine(bend.x, bend.y, bend.z, h.x, h.y, h.z, 255, 40, 40, 255)
+                end
             end
             motor.keep()
             Wait(0)
@@ -458,9 +478,11 @@ return {
     toggleRamps = toggleRamps,
     isBusy = function() return busy end,
     ---/swtow_test: start measuring how far the cable sags; returns the largest sag per truck so far
-    ---(SwSag: metres, which segment, on which frame).
+    ---(SwSag: metres, which segment, on which frame, which point and where).
     measureSag = function()
         sagSeen = sagSeen or {}
         return sagSeen
     end,
+    ---/swtow_test: let go of each cable point before pinning it again.
+    setRepin = function(value) repin = value end,
 }

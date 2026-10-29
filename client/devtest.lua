@@ -323,8 +323,10 @@ end
 local function cableTaut(what, seen)
     if not config.flatbed.rope then return end
     if not seen then return check(false, what, 'no cable was drawn') end
-    check(seen.metres < 0.1, what, ('sagged up to %.2f m, %s, frame %d, points %d → %d'):format(seen.metres,
-        seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame, seen.pinned, seen.drawn))
+    local function v(p) return ('%+.2f %+.2f %+.2f'):format(p.x, p.y, p.z) end
+    check(seen.metres < 0.1, what, ('off the line by %.2f m: %s, frame %d, point %d of %d (%d drawn) at %s, pinned to %s, line %s → %s, vehicle %.2f m/s')
+        :format(seen.metres, seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame, seen.index,
+            seen.pinned, seen.drawn, v(seen.at), v(seen.want), v(seen.from), v(seen.to), seen.speed))
 end
 
 ---Waits for a truck state bag to read as wanted (the server's change arrives a moment later).
@@ -458,9 +460,13 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
         { model = 'asea', side = 1.0, angle = 0.0, label = 'sedan 1 m to the side' },
         { model = 'asea', side = -0.8, angle = 10.0, label = 'sedan turned 10°' },
         { model = 'asea', side = 0.3, angle = 180.0, label = 'sedan rear first' },
+        -- The cable held another way: each point let go before it is pinned again.
+        { model = 'asea', side = 0.0, angle = 0.0, label = 'sedan straight behind, re-pinned', repin = true },
+        { model = 'baller', side = 0.0, angle = 0.0, label = 'SUV straight behind, re-pinned', repin = true },
     }
     local restZ -- how high a winched sedan sits on the bed, for setting one down there below
     for _, case in ipairs(cases) do
+        tow.setRepin(case.repin == true)
         local car = spawnVehicle(case.model, behind(truck, case.model, 3.5, case.side, case.angle))
         if check(car, case.label .. ': test vehicle spawned') then
             ---@cast car integer
@@ -491,6 +497,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
             remove(car)
         end
     end
+    tow.setRepin(false)
 
     local far = spawnVehicle('asea', behind(truck, 'asea', config.flatbed.winchRange + 4.0))
     if far then
