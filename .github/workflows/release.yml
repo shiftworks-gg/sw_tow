@@ -1,0 +1,41 @@
+name: release
+
+# Pushing a tag v<version> (the version in fxmanifest.lua) runs the tests, builds the server
+# download with scripts/release.sh and publishes a GitHub release with that version's CHANGELOG
+# section. The update check in server/version.lua reads these releases.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache tools
+        uses: actions/cache@v4
+        with:
+          path: .check
+          key: check-${{ hashFiles('scripts/check.sh') }}
+      - name: Lua 5.4
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.4"
+      - name: Tag matches fxmanifest version
+        run: |
+          version=$(sed -n "s/^version '\([0-9][0-9.]*\)'.*/\1/p" fxmanifest.lua)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match fxmanifest version $version" >&2
+            exit 1
+          fi
+      - name: Tests and zip
+        run: bash scripts/release.sh
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/release.sh --notes > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/*.zip --title "Shiftworks Tow & Impound ${GITHUB_REF_NAME#v}" --notes-file notes.md
