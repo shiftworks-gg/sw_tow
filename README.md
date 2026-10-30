@@ -4,7 +4,7 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 
 `Qbox` · `Open config` · `EN / DE / RU`
 
-> Status: 0.1.0, in development. QBCore support is experimental: it passes a server smoke test against qb-core, qb-garages and qb-banking but has not been played yet. ESX is planned and stops with a clear message.
+> QBCore support is experimental: it passes a server smoke test against qb-core, qb-garages and qb-banking but has not been played yet. ESX is planned; on ESX the resource stops with a clear message.
 
 ## What it does
 
@@ -37,13 +37,13 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 The console shows one line when it is ready:
 
 ```
-[sw_tow] Shiftworks Tow & Impound 0.1.0 · framework qbox · garage qbx_garages · keys qbx_vehiclekeys · banking Renewed-Banking
+[sw_tow] Shiftworks Tow & Impound 1.0.0 · framework qbox · garage qbx_garages · keys qbx_vehiclekeys · banking Renewed-Banking
 ```
 
 Then type `swtow_selftest` in the server console. It checks the job, the police job type, the garage, keys and banking scripts and their accounts, the database tables, a write and read through the database, its clock, the texts and the contract spots, and names anything that needs fixing:
 
 ```
-sw_tow 0.1.0 self-test, 2026-10-27 16:54:33 · 14 PASS · 0 WARN · 0 FAIL
+sw_tow 1.0.0 self-test, 2026-10-27 16:54:33 · 14 PASS · 0 WARN · 0 FAIL
 ```
 
 A mistake in `config.lua` stops the start with every problem named, for example `config.lua → payout.account: must be one of cash, bank, is wallet`.
@@ -123,7 +123,7 @@ development server `/swtow_test` plays the main flows in game with your own char
 ## Credits
 
 - Contract spots: from `qbx_towjob` by the Qbox project (GPL-3.0).
-- Fonts: Barlow Condensed and IBM Plex (SIL Open Font License, see `html/fonts`).
+- Fonts: Barlow Condensed, Roboto Condensed and IBM Plex Sans (SIL Open Font License, see `html/fonts`).
 - Icons: Tabler Icons (MIT).
 
 ## License

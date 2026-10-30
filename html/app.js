@@ -32,7 +32,7 @@
     yellow: ['#fff9db', '#fff3bf', '#ffec99', '#ffe066', '#ffd43b', '#fcc419', '#fab005', '#f59f00', '#f08c00', '#e67700'],
     orange: ['#fff4e6', '#ffe8cc', '#ffd8a8', '#ffc078', '#ffa94d', '#ff922b', '#fd7e14', '#f76707', '#e8590c', '#d9480f'],
   };
-  // Theme -> layout. 'minimal' is the name of the compact layout in 0.1.0 configs.
+  // Theme -> layout. 'minimal' is the earlier name of the compact layout, kept for old configs.
   const LAYOUTS = { shiftworks: 'card', ox: 'card', mission: 'mission', compact: 'compact', minimal: 'compact' };
   const BRAND_ACCENT = '#ff7a2e';
   const RING = 2 * Math.PI * 44;

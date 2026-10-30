@@ -693,7 +693,7 @@ function World:buildEnv()
     env.GetConvar = function(name, default) return w.convars[name] or default end
     env.GetConvarInt = function(name, default) return tonumber(w.convars[name]) or default end
     env.GetResourceMetadata = function(_, key)
-        if key == 'version' then return '0.1.0' end
+        if key == 'version' then return '1.0.0' end
         if key == 'repository' then return '' end
     end
     env.LoadResourceFile = function(_, path) return w.files[path] end

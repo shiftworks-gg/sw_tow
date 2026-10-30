@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 1.0.0 (unreleased)
 
 - Tow company job: clock in, company flatbed and tow truck with keys.
 - Flatbed winch with a synced cable; tow truck uses the game's tow arm.
