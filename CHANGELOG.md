@@ -20,6 +20,8 @@ First release.
 **Shift panel**
 - Built around the next step: drive to the pickup, load, deliver to the yard, with a countdown ring, where to go and how far, step progress, cargo state, earnings with the last payout, time on shift and open calls. It scales with the screen resolution.
 - Themes: `shiftworks`, `ox` (in ox_lib's colours and font), `mission` (like the game's objectives) and `compact`. The accent follows `ox:primaryColor` when set; colours, font, opacity, side, height and size are in `config.ui`.
+- Your own HUD instead: `ui.enabled = false` and `exports.sw_tow:GetShiftState()` on the client.
+- Menus, dialogs and notifications are your server's ox_lib as it is. `notify.custom` sends notifications to any other script; `notify.style = 'shiftworks'` gives the dark Shiftworks look.
 
 **Server owners**
 - Every action is checked on the server: shift, truck, distance, rate and trip time. Refused actions are logged with the reason, never punished. A tow called on your own car never makes money.

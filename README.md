@@ -67,6 +67,22 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `sounds` | game sounds on | Ramps, winch motor, straps and tow arm; each can be swapped or muted |
 | `ui` | `shiftworks` theme, right edge, accent `auto` | Shift panel theme (`shiftworks`, `ox`, `mission`, `compact`), accent (follows `ox:primaryColor` when you set it), colours, font, opacity, side, height, size, header label, logo |
 
+### Make it look like your server
+
+Menus, dialogs, the counter, the call list, text hints and notifications are drawn by your own `ox_lib`, so they already look like the rest of your server, also when you restyled ox_lib or replaced its interface. sw_tow adds no style of its own to them.
+
+The only screen of its own is the shift panel. Pick how far it blends in:
+
+| You want | Set in `config.lua` |
+|---|---|
+| The panel in your ox_lib colours and font | `ui.theme = 'ox'` and `setr ox:primaryColor` in `server.cfg` |
+| Your colours, font, logo, server name | `ui.accent`, `ui.colors`, `ui.font`, `ui.logo`, `ui.label` |
+| No box, like the game's own objectives | `ui.theme = 'mission'` |
+| As small as possible | `ui.theme = 'compact'` |
+| Your own HUD instead | `ui.enabled = false`, then read `exports.sw_tow:GetShiftState()` on the client |
+| Notifications in another script | `notify.custom = function(message, kind) ... end` |
+| The Shiftworks dark notifications | `notify.style = 'shiftworks'` |
+
 Discord logging: set `set sw_tow:webhook "https://discord.com/api/webhooks/..."` in `server.cfg`. Keep webhooks out of config files.
 
 Texts live in `locales/en.json`, `de.json`, `ru.json`. The language follows `setr ox:locale`.
@@ -91,6 +107,13 @@ Admin commands need the ace `command.swtow_spots` (the default Qbox recipe gives
 ```lua
 -- Server: create a call for a player's current vehicle (for phones and radial menus).
 local ok, errorKey = exports.sw_tow:CreateCall(source, 'Flat tyre on the highway')
+```
+
+```lua
+-- Client: what the shift panel shows, for drawing it in your own HUD. nil while off shift.
+-- { deliveries, earned, onShift (s), open, truck = { name, plate }, cargo, status,
+--   call = { type, plate, remaining (s), total (s) }, route = { to = 'pickup'|'yard', where, metres } }
+local state = exports.sw_tow:GetShiftState()
 ```
 
 State bags other scripts can read:

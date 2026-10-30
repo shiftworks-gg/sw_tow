@@ -81,6 +81,11 @@ function checker.run(cfg)
     text('policeJobType')
     boolean('debug')
 
+    if get('notify.style') ~= nil then oneOf('notify.style', { 'server', 'shiftworks' }) end
+    if get('notify.position') ~= nil then text('notify.position') end
+    if get('notify.custom') ~= nil and type(get('notify.custom')) ~= 'function' then
+        problem('notify.custom', 'must be a function(message, kind) ... end')
+    end
     boolean('ui.enabled')
     oneOf('ui.position', { 'right', 'left' })
     number('ui.top', 0, 90)

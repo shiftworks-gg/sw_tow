@@ -133,6 +133,12 @@ local function show(value)
     end)
 end
 
+-- For servers that draw their own HUD (ui.enabled = false): the data the panel shows, nil off shift.
+exports('GetShiftState', function()
+    if not shift.onShift() then return end
+    return snapshot()
+end)
+
 local panel = {}
 local probeWaiting
 

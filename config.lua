@@ -7,8 +7,11 @@ return {
     policeJobType = 'leo',      -- Job type that may order tows and lift police holds.
     debug = false,              -- Extra console output and visible zones. Keep false on a live server.
 
-    notify = {
-        position = 'top-right',  -- ox_lib notification position.
+    notify = {                   -- Notifications. By default they look like every other ox_lib notification on your server.
+        style = 'server',        -- 'server': your ox_lib as it is (also restyled or replaced) | 'shiftworks': the dark Shiftworks look.
+        position = nil,          -- nil = ox_lib's own position. Or 'top-right', 'top', 'center-right', ...
+        -- Send them to any notification script instead; kind is 'success', 'inform', 'warning' or 'error'.
+        -- custom = function(message, kind) exports.your_notify:Show(message, kind) end,
     },
 
     ui = {                       -- Shift panel shown while on shift. Restyle it here, no code changes needed.
