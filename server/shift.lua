@@ -170,12 +170,20 @@ AddEventHandler('playerDropped', function()
     guard.forget(src)
 end)
 
+---Our own deletions forget the truck first, so this only runs when the game or another resource
+---removed it. The worker's client may still show it: it is told, so a new one can be taken at once
+---instead of every action failing on a truck the server no longer knows.
 AddEventHandler('entityRemoved', function(entity)
     local src = truckOwner[entity]
     if not src then return end
     truckOwner[entity] = nil
     local current = shifts[src]
-    if current and current.truck == entity then current.truck, current.method = nil, nil end
+    if not current or current.truck ~= entity then return end
+    current.truck, current.method = nil, nil
+    local owner = NetworkGetEntityOwner(entity)
+    log.warn(src, 'truck_lost', ('company truck removed by the game or another resource (network owner %s)')
+        :format(owner and owner > 0 and ('player ' .. owner) or 'server'))
+    TriggerClientEvent('sw_tow:client:truckLost', src)
 end)
 
 AddEventHandler('onResourceStop', function(resource)

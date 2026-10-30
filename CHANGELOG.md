@@ -30,4 +30,6 @@
 - Fixed: route and yard-zone loops ran off shift.
 - Repeating an action too quickly now says to wait a moment instead of "Something went wrong".
 - Fixed (QBCore): released motorcycles were created as cars.
+- Fixed: when the game or another resource removed the company truck, the worker could still see it and every action failed with "Something went wrong" until they reconnected. Now they are told the truck is gone and can take a new one at the counter; the server console names the cause (`truck_lost`).
+- Refused truck actions (attach, secure, ramps, unload) log why: not on shift, truck lost, not their truck, or how far away the worker stands.
 - Fixed: a hand-over could be refused as "nothing loaded" right after arriving, while the server's copy of the strapped car's position still trailed the truck.

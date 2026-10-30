@@ -50,18 +50,33 @@ function tow.clear(truck)
     end
 end
 
----The worker's own company truck, if they are close to it.
+---The worker's own company truck, if they are close to it. Otherwise why not, for the log, and
+---the error key the worker reads when it is one they can act on.
 ---@param src integer
 ---@param truckNet any
----@return integer? truck, SwShift? current
+---@return integer? truck
+---@return SwShift|string currentOrReason
+---@return string? errorKey
 local function ownTruck(src, truckNet)
     local current = shift.get(src)
-    local truck = guard.vehicle(truckNet)
-    if not current or not truck or current.truck ~= truck then return end
+    if not current then return nil, 'not on shift' end
+    if not current.truck then return nil, 'no company truck: lost or returned', 'garage.lost' end
+    local truck = current.truck --[[@as integer]]
+    if guard.vehicle(truckNet) ~= truck then return nil, 'not their company truck' end
     -- With the ramps down the vehicle (and the worker next to it) can stand some 25 m from the
     -- truck's centre: 10 m of winch range behind 6 m of ramps behind half a truck.
-    if not guard.near(src, GetEntityCoords(truck), 35.0) then return end
+    local coords = guard.coords(src)
+    local distance = coords and #(coords - GetEntityCoords(truck)) or math.huge
+    if distance > 35.0 then return nil, ('%.0f m from their truck'):format(distance) end
     return truck, current
+end
+
+---ownTruck for actions that only need the truck: logs a refusal and gives its error key.
+---@return integer? truck, string? errorKey
+local function ownTruckFor(src, truckNet, action)
+    local truck, reason, errorKey = ownTruck(src, truckNet)
+    if not truck then log.warn(src, action, reason --[[@as string]]) end
+    return truck, errorKey
 end
 
 ---Unknown classes (addon models the framework has no data for) are allowed.
@@ -77,10 +92,15 @@ end
 
 lib.callback.register('sw_tow:server:attach', function(src, truckNet, targetNet)
     if not guard.rate(src, 'attach') then return false, 'common.wait' end
-    local truck, current = ownTruck(src, truckNet)
+    local truck, current, truckError = ownTruck(src, truckNet)
+    if not truck then
+        log.warn(src, 'attach', current --[[@as string]])
+        return false, truckError
+    end
+    ---@cast current SwShift
     local target = guard.vehicle(targetNet)
-    if not truck or not current or not target or target == truck then
-        log.warn(src, 'attach', 'invalid truck or target')
+    if not target or target == truck then
+        log.warn(src, 'attach', 'invalid target')
         return false
     end
     if tow.get(truck) then return false, 'tow.already_loaded' end
@@ -115,9 +135,10 @@ lib.callback.register('sw_tow:server:attach', function(src, truckNet, targetNet)
 end)
 
 lib.callback.register('sw_tow:server:secured', function(src, truckNet)
-    local truck = ownTruck(src, truckNet)
-    local record = truck and tow.get(truck)
-    if not truck or not record or record.method ~= 'flatbed' or record.secured then return false end
+    local truck, truckError = ownTruckFor(src, truckNet, 'secured')
+    if not truck then return false, truckError end
+    local record = tow.get(truck)
+    if not record or record.method ~= 'flatbed' or record.secured then return false end
     if #(GetEntityCoords(record.target) - GetEntityCoords(truck)) > 6.0 then
         log.warn(src, 'secured', 'cargo is not on the bed')
         return false
@@ -129,9 +150,10 @@ lib.callback.register('sw_tow:server:secured', function(src, truckNet)
 end)
 
 lib.callback.register('sw_tow:server:lowering', function(src, truckNet)
-    local truck = ownTruck(src, truckNet)
-    local record = truck and tow.get(truck)
-    if not truck or not record then return false end
+    local truck, truckError = ownTruckFor(src, truckNet, 'lowering')
+    if not truck then return false, truckError end
+    local record = tow.get(truck)
+    if not record then return false end
     if record.method == 'flatbed' then
         -- Not secured while it comes down: no delivery mid-unload, and it can be strapped again if
         -- it does not come down.
@@ -146,14 +168,15 @@ end)
 lib.callback.register('sw_tow:server:ramps', function(src, truckNet, down)
     -- Only lowering is limited: a failed load or unload raises the ramps again at once.
     if down and not guard.rate(src, 'ramps') then return false, 'common.wait' end
-    local truck = ownTruck(src, truckNet)
-    if not truck or Entity(truck).state['sw_tow:method'] ~= 'flatbed' then return false end
+    local truck, truckError = ownTruckFor(src, truckNet, 'ramps')
+    if not truck then return false, truckError end
+    if Entity(truck).state['sw_tow:method'] ~= 'flatbed' then return false end
     Entity(truck).state:set('sw_tow:ramps', down == true or nil, true)
     return true
 end)
 
 lib.callback.register('sw_tow:server:detach', function(src, truckNet)
-    local truck = ownTruck(src, truckNet)
+    local truck = ownTruckFor(src, truckNet, 'detach')
     if not truck or not cargo[truck] then return false end
     tow.clear(truck)
     return true

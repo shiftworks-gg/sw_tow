@@ -468,6 +468,10 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
     }
     local restZ -- how high a winched sedan sits on the bed, for setting one down there below
     for _, case in ipairs(cases) do
+        -- Every later step would fail on it, so one line names the cause instead.
+        if shift.truck() ~= truck then
+            expect(false, case.label .. ': the company truck is still there', 'removed by the game or another resource, see the server console (truck_lost)')
+        end
         tow.setRepin(case.repin == true)
         local car = spawnVehicle(case.model, behind(truck, case.model, 3.5, case.side, case.angle))
         if check(car, case.label .. ': test vehicle spawned') then
@@ -500,6 +504,7 @@ scenario('flatbed', 'Flatbed: ramps, winch and unloading in different positions'
         end
     end
     tow.setRepin(false)
+    expect(shift.truck() == truck, 'the company truck is still there', 'removed by the game or another resource, see the server console (truck_lost)')
 
     local far = spawnVehicle('asea', behind(truck, 'asea', config.flatbed.winchRange + 4.0))
     if far then

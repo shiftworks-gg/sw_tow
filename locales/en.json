@@ -27,7 +27,8 @@
     "already_out": "You already have a truck out.",
     "spot_busy": "The truck spot is blocked. Clear it first.",
     "too_far": "Bring the truck back to the yard first.",
-    "has_cargo": "Unload the vehicle first."
+    "has_cargo": "Unload the vehicle first.",
+    "lost": "Your company truck is gone. Take a new one at the counter."
   },
   "tow": {
     "winch": "Hook the winch cable",

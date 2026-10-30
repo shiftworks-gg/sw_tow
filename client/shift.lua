@@ -192,4 +192,12 @@ AddStateBagChangeHandler('sw_tow:shift', ('player:%s'):format(cache.serverId), f
     if not value then truckNet = nil end
 end)
 
+-- The game or another resource removed the company truck on the server. This client may still
+-- show it; forgetting it brings back "Take a truck" at the counter.
+RegisterNetEvent('sw_tow:client:truckLost', function()
+    if not truckNet then return end
+    truckNet = nil
+    notify(locale('garage.lost'), 'error')
+end)
+
 return shift

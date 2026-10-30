@@ -126,6 +126,7 @@ local function deliver(src, truckNet, yardKey, unloaded)
     local current = shift.get(src)
     local truck = guard.vehicle(truckNet)
     local yard = type(yardKey) == 'string' and config.yards[yardKey]
+    if current and not current.truck then return false, 'garage.lost' end
     if not current or not truck or current.truck ~= truck or not yard then return false end
     if not guard.near(src, GetEntityCoords(truck), 15.0) or not util.inZone(GetEntityCoords(truck), yard.zone) then
         return false, 'impound.not_in_yard'

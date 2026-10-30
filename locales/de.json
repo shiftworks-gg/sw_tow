@@ -27,7 +27,8 @@
     "already_out": "Du hast schon einen Wagen draußen.",
     "spot_busy": "Der Stellplatz ist blockiert. Mach ihn zuerst frei.",
     "too_far": "Bring den Wagen zuerst zurück auf den Hof.",
-    "has_cargo": "Lade zuerst das Fahrzeug ab."
+    "has_cargo": "Lade zuerst das Fahrzeug ab.",
+    "lost": "Dein Firmenwagen ist weg. Hol dir am Schalter einen neuen."
   },
   "tow": {
     "winch": "Windenseil einhaken",
