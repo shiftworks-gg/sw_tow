@@ -324,8 +324,9 @@ local function cableTaut(what, seen)
     if not config.flatbed.rope then return end
     if not seen then return check(false, what, 'no cable was drawn') end
     local function v(p) return ('%+.2f %+.2f %+.2f'):format(p.x, p.y, p.z) end
-    check(seen.metres < 0.1, what, ('off the line by %.2f m: %s, frame %d, point %d of %d (%d drawn) at %s, pinned to %s, line %s → %s, vehicle %.2f m/s')
-        :format(seen.metres, seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame, seen.index,
+    check(seen.metres < 0.1 and seen.short < 0.1, what, ('sags %.2f m, stops %.2f m before the %s, starts %.2f m back: %s, frame %d, point %d of %d (%d drawn) at %s, pinned to %s, line %s → %s, vehicle %.2f m/s')
+        :format(seen.metres, seen.short, seen.segment == 1 and 'bend' or 'hook', seen.behind,
+            seen.segment == 1 and 'winch to bend' or 'bend to hook', seen.frame, seen.index,
             seen.pinned, seen.drawn, v(seen.at), v(seen.want), v(seen.from), v(seen.to), seen.speed))
 end
 

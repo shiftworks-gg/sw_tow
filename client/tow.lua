@@ -341,7 +341,9 @@ local function newSegment(a, b)
 end
 
 ---@class SwSag
----@field metres number how far the worst point strays from the line it was pinned on
+---@field metres number how far the worst point strays sideways from the line it was pinned on
+---@field short number how far the cable stops before the far end (hook or bend), 0 when it gets there
+---@field behind number how far the first point sits back along the line, past the near end
 ---@field segment integer 1 winch to bend, 2 bend to hook
 ---@field frame integer frames since the cable was made
 ---@field index integer the worst point (0 is the winch or bend end)
@@ -353,9 +355,12 @@ end
 ---@field to vector3
 ---@field speed number how fast the vehicle moved, m/s
 
----How far the cable as drawn strays from the line it was pinned on: the farthest of its points, in
----metres, with where it was and should be. Read before this frame's pinning, the points are where
----the last frame drew them. Nil until the segment has been pinned in an earlier frame and drawn once.
+---How the cable as drawn sits on the line it was pinned on: the farthest any point strays sideways
+---(sag), whether it reaches the far end, and how far the first point sits back past the near end.
+---The game draws point 0 about one point spacing back along the line (into the winch housing, or
+---along the bed behind the roller): straight, so not sag. Read before this frame's pinning, the
+---points are where the last frame drew them. Nil until the segment has been pinned in an earlier
+---frame and drawn once.
 ---@return SwSag?
 local function sag(rope, truck)
     local function toTruck(p) return GetOffsetFromEntityGivenWorldCoords(truck, p.x, p.y, p.z) end
@@ -363,18 +368,25 @@ local function sag(rope, truck)
     if not line or line.frame >= GetFrameCount() then return end
     local a, ab = line.a, line.b - line.a
     local lengthSq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z
+    local length = math.sqrt(lengthSq)
     local count = GetRopeVertexCount(rope)
     local worst ---@type SwSag?
+    local first, last = math.huge, -math.huge
     for i = 0, count - 1 do
         local p = GetRopeVertexCoord(rope, i)
         local ap = p - a
         local t = lengthSq > 0.0 and (ap.x * ab.x + ap.y * ab.y + ap.z * ab.z) / lengthSq or 0.0
-        local off = #(p - (a + ab * math.max(0.0, math.min(1.0, t))))
+        first, last = math.min(first, t), math.max(last, t)
+        local off = #(p - (a + ab * t))
         if not worst or off > worst.metres then
             local want = a + ab * (line.count > 1 and math.min(i, line.count - 1) / (line.count - 1) or 0.0)
-            worst = { metres = off, segment = 0, frame = 0, speed = 0.0, index = i, pinned = line.count, drawn = count,
+            worst = { metres = off, short = 0.0, behind = 0.0, segment = 0, frame = 0, speed = 0.0, index = i, pinned = line.count, drawn = count,
                 at = toTruck(p), want = toTruck(want), from = toTruck(line.a), to = toTruck(line.b) }
         end
+    end
+    if worst then
+        worst.short = math.max(0.0, (1.0 - last) * length)
+        worst.behind = math.max(0.0, -first * length)
     end
     return worst
 end
@@ -414,7 +426,7 @@ local function watchWinch(truck, target)
                     for segment = 1, 2 do
                         local seen = sag(list[segment], truck)
                         local worst = sagSeen[truck]
-                        if seen and (not worst or seen.metres > worst.metres) then
+                        if seen and (not worst or math.max(seen.metres, seen.short) > math.max(worst.metres, worst.short)) then
                             seen.segment, seen.frame, seen.speed = segment, frame, GetEntitySpeed(target)
                             sagSeen[truck] = seen
                         end
