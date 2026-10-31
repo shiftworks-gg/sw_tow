@@ -200,10 +200,11 @@ end
 ---@type vector4
 local site
 
----The company truck of the given kind, parked on the test site.
+---The company truck of the given kind, parked at a place (the tester gets out next to it).
 ---@param index integer config.garage.vehicles index
+---@param at vector4
 ---@return integer truck
-local function truckOnSite(index)
+local function placeTruck(index, at)
     local wanted = config.garage.vehicles[index]
     local truck = shift.truck()
     if truck and Entity(truck).state['sw_tow:method'] ~= wanted.method then
@@ -222,10 +223,19 @@ local function truckOnSite(index)
         expect(ok, ('a %s is taken out'):format(wanted.label), why(errorKey))
         truck = expect(waitFor(shift.truck, 5000), 'the truck exists')
     end
-    local forward = vec3(-math.sin(math.rad(site.w)), math.cos(math.rad(site.w)), 0.0)
     sitIn(truck)
-    moveVehicle(truck, site.xyz + forward * 14.0, site.w)
+    moveVehicle(truck, at.xyz, at.w)
     getOut()
+    return truck
+end
+
+---The company truck of the given kind, parked on the test site.
+---@param index integer config.garage.vehicles index
+---@return integer truck
+local function truckOnSite(index)
+    local forward = vec3(-math.sin(math.rad(site.w)), math.cos(math.rad(site.w)), 0.0)
+    local p = site.xyz + forward * 14.0
+    local truck = placeTruck(index, vec4(p.x, p.y, p.z, site.w))
     teleport(site.xyz + vec3(forward.y, -forward.x, 0.0) * 4.0, site.w)
     return truck
 end
@@ -865,3 +875,153 @@ RegisterCommand('swtow_test', function(_, args)
     lib.registerContext({ id = 'sw_tow_tests', title = 'sw_tow tests', options = options })
     lib.showContext('sw_tow_tests')
 end, false)
+
+-- Film bridge ------------------------------------------------------------------------------------
+-- sw_director, the studio's video tool, stages its shots with the same helpers as the tests. An
+-- export cannot wait across resources, so dev() starts an action in a thread here and returns a
+-- ticket; devResult(ticket) returns true and { ok, ... } (table.pack of pcall) once it is done.
+
+local film = {}
+
+---Job, money and a shift, clocked in at the office if not on shift yet.
+function film.prepare()
+    if shift.onShift() then return true end
+    expect(lib.callback.await('sw_tow:dev:prepare', false), 'the tow job and money are given')
+    Wait(1000)
+    teleport(config.office.coords.xyz, config.office.coords.w)
+    shift.clockIn()
+    return expect(waitFor(shift.onShift, 3000), 'clocked in')
+end
+
+---@param kind 'flatbed'|'hook'
+---@param at vector4
+function film.truck(kind, at)
+    return placeTruck(kind == 'hook' and HOOK or FLATBED, at)
+end
+
+---Where things are on the truck, truck space: ground, ends, and for a flatbed the ramp foot,
+---roller and bed height.
+function film.geometry(truck)
+    local min, max = GetModelDimensions(GetEntityModel(truck))
+    local g = { ground = min.z, rear = min.y, front = max.y, side = max.x, top = max.z }
+    if Entity(truck).state['sw_tow:method'] == 'flatbed' then
+        local roller = flatbed.rollerOffset(truck)
+        g.foot = flatbed.rampFootY(truck) or (min.y - 6.0)
+        g.rollerY, g.bed = roller.y, roller.z
+    end
+    return g
+end
+
+---@param owned? boolean registered to you like a bought car (calls need that)
+function film.vehicle(model, at, owned)
+    if owned then return spawnOwned(model, at) end
+    return spawnVehicle(model, at)
+end
+
+film.behind = behind
+film.remove = remove
+film.load = tow.load
+film.unload = tow.unload
+film.ramps = tow.toggleRamps
+film.deliver = tow.deliver
+film.tidy = tidy
+
+function film.move(vehicle, at)
+    moveVehicle(vehicle, at.xyz, at.w)
+    return true
+end
+
+---Shows or hides the shift panel (hidden for shots without interface).
+function film.panel(visible)
+    SendNUIMessage({ type = 'visible', value = visible and shift.onShift() })
+    return true
+end
+
+---An owner's call for the car arrives; returns the call id.
+function film.call(car, message)
+    return lib.callback.await('sw_tow:dev:filmCall', false, VehToNet(car), message)
+end
+
+function film.closeCall(id)
+    return lib.callback.await('sw_tow:dev:closeCall', false, id)
+end
+
+---A flatbed on the way to the yard: the truck 14 m in front of `at`, an owned car called in,
+---accepted and loaded, picked up an hour ago (so the hand-over is not refused as too fast).
+---@return integer truck, integer car, string plate
+function film.towing(at)
+    site = at
+    local t = ownedCarToYard(function(car)
+        local id = film.call(car, '')
+        return findCall(function(call) return call.id == id end)
+    end)
+    lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
+    return t.truck, t.car, t.plate
+end
+
+---A car of yours in the yard, impounded 27 hours ago; with `fine`/`hold` it came on a police order.
+---@return string plate
+function film.impound(at, fine, hold)
+    site = at
+    local t = ownedCarToYard(function(car, plate)
+        if fine or hold then
+            expect(lib.callback.await('sw_tow:dev:policeOrder', false, VehToNet(car), fine or 0, hold == true, 0), 'a police order is placed')
+            return findCall(function(call) return call.plate == plate and call.type == 'police' end)
+        end
+        local id = film.call(car, '')
+        return findCall(function(call) return call.id == id end)
+    end)
+    driveToYard(t.truck)
+    lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
+    Wait(600)
+    local ok, errorKey = tow.deliver(t.truck)
+    expect(ok, 'handed over at the yard', not ok and deliverFailure(t.truck, errorKey) or nil)
+    lib.callback.await('sw_tow:dev:ageImpound', false, t.plate, 27)
+    return t.plate
+end
+
+---Stands you at the impound counter.
+function film.counter()
+    teleport(counter().xyz, counter().w)
+    return true
+end
+
+---@param name 'police'|'tow'
+function film.job(name)
+    if name == 'police' then return lib.callback.await('sw_tow:dev:filmJob', false, 'police') end
+    lib.callback.await('sw_tow:dev:filmJob', false, 'tow')
+    Wait(500)
+    return film.prepare()
+end
+
+---Removes every test vehicle and record and ends the shift.
+function film.cleanup()
+    tidy()
+    local cleaned = lib.callback.await('sw_tow:dev:cleanup', false)
+    lib.callback.await('sw_tow:dev:stopShift', false)
+    return cleaned
+end
+
+local tickets, nextTicket = {}, 0
+
+exports('dev', function(action, ...)
+    local fn = film[action]
+    if not fn then error(('sw_tow dev: no action %s'):format(tostring(action)), 2) end
+    nextTicket = nextTicket + 1
+    local ticket, args = nextTicket, table.pack(...)
+    tickets[ticket] = false
+    CreateThread(function()
+        tickets[ticket] = table.pack(xpcall(fn, function(e)
+            if e == ABORT then return lines[#lines] or 'aborted' end
+            return debug.traceback(tostring(e), 2)
+        end, table.unpack(args, 1, args.n)))
+    end)
+    return ticket
+end)
+
+exports('devResult', function(ticket)
+    local result = tickets[ticket]
+    if not result then return false end
+    tickets[ticket] = nil
+    return true, result
+end)

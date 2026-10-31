@@ -141,6 +141,27 @@ register('policeOrder', function(src, netId, fine, hold, holdHours)
     })
 end)
 
+---Filming (sw_director): an owner's call for a vehicle, made while the tester stands at the truck
+---as the worker who receives it. The call command needs the caller at the car.
+register('filmCall', function(src, netId, message)
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if vehicle == 0 then return false end
+    return calls.add({
+        type = 'player', caller = src, plate = framework.getPlate(vehicle), vehicle = vehicle,
+        coords = GetEntityCoords(vehicle), message = message or '',
+    })
+end)
+
+---Filming: the police job on duty for the officer's shots, or the tow job back.
+register('filmJob', function(src, name)
+    if name == 'police' then
+        if not framework.setJob(src, 'police', 0) then error('could not give the police job') end
+        framework.setDuty(src, true)
+        return true
+    end
+    return framework.setJob(src, config.job, 0)
+end)
+
 register('liftHold', function(_, plate)
     local id = MySQL.scalar.await('SELECT id FROM sw_tow_impound WHERE plate = ? AND released_at IS NULL', { plate })
     return id ~= nil and storage.liftHold(id)
