@@ -931,9 +931,10 @@ function film.move(vehicle, at)
     return true
 end
 
----Shows or hides the shift panel (hidden for shots without interface).
+---Shows or hides the shift panel and the parking guide (hidden for shots without interface).
 function film.panel(visible)
     SendNUIMessage({ type = 'visible', value = visible and shift.onShift() })
+    flatbed.setGuide(visible)
     return true
 end
 

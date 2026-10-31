@@ -1236,10 +1236,17 @@ end
 -- Runs only on shift and near the truck; nothing runs otherwise.
 
 local guideBusy = false
+local guideHidden = false
 
 ---@param busy boolean
 function flatbed.setBusy(busy)
     guideBusy = busy
+end
+
+---Turns the guide off and on (for filming without interface).
+---@param visible boolean
+function flatbed.setGuide(visible)
+    guideHidden = not visible
 end
 
 ---The vehicle most likely meant for loading: the closest one standing behind the truck.
@@ -1315,7 +1322,7 @@ local function runGuide()
         if now >= nextCheck then
             nextCheck = now + 300
             truck, target, strips, result = shift.truck(), nil, nil, nil
-            if truck and not guideBusy and Entity(truck).state['sw_tow:method'] == 'flatbed'
+            if truck and not guideBusy and not guideHidden and Entity(truck).state['sw_tow:method'] == 'flatbed'
                 and not Entity(truck).state['sw_tow:cargo'] and #(GetEntityCoords(cache.ped) - GetEntityCoords(truck)) < 20.0 then
                 if not modelLoaded then modelLoaded = pcall(lib.requestModel, cfg.ramp.model) end
                 target = modelLoaded and candidateBehind(truck) or nil
