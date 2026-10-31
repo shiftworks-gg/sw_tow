@@ -28,6 +28,7 @@ local flatbed = require 'client.flatbed'
 local calls = require 'client.calls'
 local impound = require 'client.impound'
 local panel = require 'client.panel'
+local police = require 'client.police'
 
 local FLATBED, HOOK
 for index, option in ipairs(config.garage.vehicles) do
@@ -985,6 +986,97 @@ end
 function film.counter()
     teleport(counter().xyz, counter().w)
     return true
+end
+
+-- The menus and forms, shown on screen as a player would see them and then carried out through the
+-- same functions their buttons call. Each shows for `seconds`.
+
+---Opens the call list (F6), then accepts the call as its button does.
+function film.acceptFromList(id, seconds)
+    calls.openList()
+    Wait(seconds * 1000)
+    lib.hideContext()
+    local call = findCall(function(c) return c.id == id end)
+    if not call then return false end
+    local ok, errorKey = calls.accept(call)
+    notify(locale(ok and 'calls.route_set' or (errorKey or 'common.failed')), ok and 'success' or 'error')
+    return ok
+end
+
+---Accepts a call without showing anything.
+function film.accept(id)
+    local call = findCall(function(c) return c.id == id end)
+    return call ~= nil and calls.accept(call)
+end
+
+---Shows the counter's list of impounded vehicles.
+function film.counterMenu(seconds)
+    impound.openCounter(YARD_KEY)
+    Wait(seconds * 1000)
+    lib.hideContext()
+    return true
+end
+
+---The fee dialog for a vehicle, then the release (the fee is charged, the vehicle comes out).
+function film.payFee(plate, seconds)
+    local item
+    for _, entry in ipairs(impound.list(YARD_KEY)) do
+        if entry.plate == plate then item = entry end
+    end
+    if not item then return false end
+    CreateThread(function() impound.confirmRelease(item) end)
+    Wait(seconds * 1000)
+    lib.closeAlertDialog()
+    Wait(300)
+    impound.releaseItem(item)
+    return true
+end
+
+---The officer's tow order form, filled in, then sent.
+function film.policeForm(vehicle, seconds)
+    local order = { reason = 'Parked on the pavement, blocking a hydrant', fine = 500, hold = true, holdHours = 24 }
+    CreateThread(function() police.orderTow(vehicle, order) end)
+    Wait(seconds * 1000)
+    lib.closeInputDialog()
+    Wait(300)
+    police.sendOrder(vehicle, order)
+    return true
+end
+
+---The officer's list of holds at the counter, then the first is lifted.
+function film.holdsMenu(seconds)
+    police.openHolds(YARD_KEY)
+    Wait(seconds * 1000)
+    lib.hideContext()
+    local list = lib.callback.await('sw_tow:server:holdList', false, YARD_KEY)
+    if not list or not list[1] then return false end
+    police.liftHold(list[1].id)
+    return true
+end
+
+---Where the yard's places are: the hand-over zone, the counter (the clerk, facing customers) and
+---the first release spot.
+function film.places()
+    local c = counter()
+    return { zone = YARD.zone.coords, counter = c, release = YARD.releaseSpots[1] }
+end
+
+---Into the yard's hand-over zone with the cargo.
+function film.toYard(truck)
+    driveToYard(truck)
+    return true
+end
+
+---A customer at the counter, facing the clerk.
+function film.customer()
+    local c = counter()
+    local forward = vec3(-math.sin(math.rad(c.w)), math.cos(math.rad(c.w)), 0.0)
+    teleport(c.xyz + forward * 1.3, c.w + 180.0)
+    return true
+end
+
+function film.ageImpound(plate, hours)
+    return lib.callback.await('sw_tow:dev:ageImpound', false, plate, hours)
 end
 
 ---@param name 'police'|'tow'

@@ -26,8 +26,29 @@ function impound.release(id)
     return lib.callback.await('sw_tow:server:release', false, id)
 end
 
+---Releases a vehicle at the counter (the fee is charged) and says how it went.
+---@param item table an entry of impound.list()
+function impound.releaseItem(item)
+    local ok, errorKey = impound.release(item.id)
+    notify(locale(ok and 'impound.released' or (errorKey or 'common.failed')), ok and 'success' or 'error')
+end
+
+---Asks the owner to confirm the fee, then releases.
+---@param item table an entry of impound.list()
+function impound.confirmRelease(item)
+    local confirm = lib.alertDialog({
+        header = locale('impound.release_header', item.plate),
+        content = locale('impound.release_confirm', util.money(item.fee)),
+        centered = true,
+        cancel = true,
+        labels = { confirm = locale('impound.release_button', util.money(item.fee)) },
+    })
+    if confirm ~= 'confirm' then return end
+    impound.releaseItem(item)
+end
+
 ---@param yardKey string
-local function openCounter(yardKey)
+function impound.openCounter(yardKey)
     local yard = config.yards[yardKey]
     local list = impound.list(yardKey)
     if #list == 0 then
@@ -42,18 +63,7 @@ local function openCounter(yardKey)
             description = item.held and locale('impound.on_hold') or locale('impound.fee_line', util.money(item.fee)),
             icon = item.held and 'lock' or 'car',
             disabled = item.held,
-            onSelect = function()
-                local confirm = lib.alertDialog({
-                    header = locale('impound.release_header', item.plate),
-                    content = locale('impound.release_confirm', util.money(item.fee)),
-                    centered = true,
-                    cancel = true,
-                    labels = { confirm = locale('impound.release_button', util.money(item.fee)) },
-                })
-                if confirm ~= 'confirm' then return end
-                local ok, errorKey = impound.release(item.id)
-                notify(locale(ok and 'impound.released' or (errorKey or 'common.failed')), ok and 'success' or 'error')
-            end,
+            onSelect = function() impound.confirmRelease(item) end,
         }
     end
 
@@ -71,7 +81,7 @@ function impound.counterOptions(yardKey)
             icon = 'fa-solid fa-square-parking',
             label = locale('impound.counter'),
             distance = 2.5,
-            onSelect = function() openCounter(yardKey) end,
+            onSelect = function() impound.openCounter(yardKey) end,
         },
         police.counterOption(yardKey),
     }

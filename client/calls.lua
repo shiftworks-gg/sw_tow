@@ -238,6 +238,8 @@ local function openList()
     lib.showContext('sw_tow_calls')
 end
 
+calls.openList = openList
+
 RegisterCommand(config.calls.listCommand, openList, false)
 
 lib.addKeybind({

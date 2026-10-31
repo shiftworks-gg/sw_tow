@@ -12,26 +12,41 @@ function police.isOfficer()
     return job ~= nil and job.type == config.policeJobType and job.onDuty
 end
 
-local function orderTow(vehicle)
-    local input = lib.inputDialog(locale('police.form_title'), {
-        { type = 'input', label = locale('police.reason'), required = true, max = 120 },
-        { type = 'number', label = locale('police.fine'), min = 0, max = cfg.maxFine, default = 0 },
-        { type = 'checkbox', label = locale('police.hold') },
-        { type = 'number', label = locale('police.hold_hours'), description = locale('police.hold_hours_hint'),
-            min = 0, max = cfg.maxHoldHours, default = 0 },
-    })
-    if not input then return end
-    local ok, errorKey = lib.callback.await('sw_tow:server:policeOrder', false, VehToNet(vehicle), {
-        reason = input[1],
-        fine = input[2] or 0,
-        hold = input[3] == true,
-        holdHours = input[4] or 0,
-    })
+---Sends a tow order and says how it went.
+---@param order { reason: string, fine: number, hold: boolean, holdHours: number }
+function police.sendOrder(vehicle, order)
+    local ok, errorKey = lib.callback.await('sw_tow:server:policeOrder', false, VehToNet(vehicle), order)
     notify(locale(ok and 'police.ordered' or (errorKey or 'common.failed')), ok and 'success' or 'error')
 end
 
+---The officer's form; `preset` fills it in (for filming).
+---@param preset? { reason: string, fine: number, hold: boolean, holdHours: number }
+function police.orderTow(vehicle, preset)
+    local input = lib.inputDialog(locale('police.form_title'), {
+        { type = 'input', label = locale('police.reason'), required = true, max = 120, default = preset and preset.reason },
+        { type = 'number', label = locale('police.fine'), min = 0, max = cfg.maxFine, default = preset and preset.fine or 0 },
+        { type = 'checkbox', label = locale('police.hold'), checked = preset and preset.hold },
+        { type = 'number', label = locale('police.hold_hours'), description = locale('police.hold_hours_hint'),
+            min = 0, max = cfg.maxHoldHours, default = preset and preset.holdHours or 0 },
+    })
+    if not input then return end
+    police.sendOrder(vehicle, {
+        reason = tostring(input[1]),
+        fine = tonumber(input[2]) or 0,
+        hold = input[3] == true,
+        holdHours = tonumber(input[4]) or 0,
+    })
+end
+
+---Lifts a hold and says how it went.
+---@param id integer impound record
+function police.liftHold(id)
+    local ok, errorKey = lib.callback.await('sw_tow:server:liftHold', false, id)
+    notify(locale(ok and 'police.lifted' or (errorKey or 'common.failed')), ok and 'success' or 'error')
+end
+
 ---@param yardKey string
-local function openHolds(yardKey)
+function police.openHolds(yardKey)
     local list = lib.callback.await('sw_tow:server:holdList', false, yardKey)
     if not list or #list == 0 then
         notify(locale('police.no_holds'), 'inform')
@@ -44,10 +59,7 @@ local function openHolds(yardKey)
             title = ('%s · %s'):format(item.plate, item.model),
             description = ('%s · %s'):format(untilText, item.note or ''),
             icon = 'lock-open',
-            onSelect = function()
-                local ok, errorKey = lib.callback.await('sw_tow:server:liftHold', false, item.id)
-                notify(locale(ok and 'police.lifted' or (errorKey or 'common.failed')), ok and 'success' or 'error')
-            end,
+            onSelect = function() police.liftHold(item.id) end,
         }
     end
     lib.registerContext({ id = 'sw_tow_holds', title = locale('police.holds_title'), options = options })
@@ -63,7 +75,7 @@ function police.counterOption(yardKey)
         label = locale('police.holds_title'),
         distance = 2.5,
         canInteract = police.isOfficer,
-        onSelect = function() openHolds(yardKey) end,
+        onSelect = function() police.openHolds(yardKey) end,
     }
 end
 
@@ -78,7 +90,7 @@ if cfg.enabled then
                 local state = Entity(entity).state
                 return police.isOfficer() and not state['sw_tow:company'] and not state['sw_tow:towedBy']
             end,
-            onSelect = function(data) orderTow(data.entity) end,
+            onSelect = function(data) police.orderTow(data.entity) end,
         },
     })
 end
