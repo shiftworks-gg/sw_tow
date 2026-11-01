@@ -62,13 +62,17 @@ return {
     },
 
     yards = {
-        strawberry = {
+        davis = {
             label = 'Shiftworks Impound',                   -- Name on the map and in the yard menu.
-            -- Area where a loaded truck hands over its cargo: center, size and rotation in degrees.
-            zone = { coords = vec3(491.0, -1314.69, 29.25), size = vec3(30.0, 30.0, 8.0), rotation = 0.0 },
-            counter = nil,                                  -- Release counter (vec4). nil = use the office counter.
+            -- Area where a loaded truck hands over its cargo: center, size (width, length, height) and
+            -- rotation in degrees, which is also the heading a truck drives in with.
+            zone = { coords = vec3(408.38, -1638.62, 29.38), size = vec3(6.0, 14.0, 8.0), rotation = 50.2 },
+            counter = vec4(402.97, -1628.89, 29.29, 221.0), -- Release counter (vec4). nil = use the office counter.
+            -- Clerk at the counter (only when counter is set); aiming at the clerk opens it. nil = an invisible box.
+            ped = { model = 's_m_m_autoshop_02', scenario = 'WORLD_HUMAN_CLIPBOARD' },
             releaseSpots = {                                -- Released vehicles appear on the first free spot.
-                vec4(489.65, -1331.82, 29.33, 306.5),
+                vec4(395.58, -1645.16, 29.29, 316.0),
+                vec4(397.96, -1647.01, 29.29, 318.1),
             },
             blip = { enabled = true, sprite = 524, color = 47, scale = 0.7 },
         },

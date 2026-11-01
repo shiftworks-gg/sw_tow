@@ -111,11 +111,49 @@ function impound.yardAt(coords)
     end
 end
 
----Separate counters (yards with their own `counter` position) get their own target box.
+---The clerk exists only on this client and only while the player is within 60 m. Aiming at the
+---clerk offers the same options as the counter.
+---@param c vector4 where the clerk stands and faces
+---@param cfg { model: string, scenario: string? }
+---@param options table[] ox_target options of the counter
+function impound.createClerk(c, cfg, options)
+    local clerk
+    local function remove()
+        if clerk and DoesEntityExist(clerk) then DeletePed(clerk) end
+        clerk = nil
+    end
+    lib.points.new({
+        coords = c.xyz,
+        distance = 60.0,
+        onEnter = function()
+            if clerk then return end
+            local model = lib.requestModel(cfg.model)
+            if not model then return end
+            -- Stand on the floor under the point, whatever height the config coordinate was taken at.
+            local found, groundZ = GetGroundZFor_3dCoord(c.x, c.y, c.z + 1.0, false)
+            clerk = CreatePed(4, model, c.x, c.y, found and groundZ or c.z - 1.0, c.w, false, true)
+            SetModelAsNoLongerNeeded(model)
+            SetEntityInvincible(clerk, true)
+            FreezeEntityPosition(clerk, true)
+            SetBlockingOfNonTemporaryEvents(clerk, true)
+            if cfg.scenario then TaskStartScenarioInPlace(clerk, cfg.scenario, 0, true) end
+            exports.ox_target:addLocalEntity(clerk, options)
+        end,
+        onExit = remove,
+    })
+    AddEventHandler('onResourceStop', function(resource)
+        if resource == cache.resource then remove() end
+    end)
+end
+
+---Separate counters (yards with their own `counter` position) get their own clerk, or a target box
+---when the yard has no `ped`.
 function impound.createCounters()
     for key, yard in pairs(config.yards) do
         local counter = yard.counter --[[@as vector4?]]
-        if counter then
+        if counter and yard.ped then
+            impound.createClerk(counter, yard.ped, impound.counterOptions(key))
+        elseif counter then
             exports.ox_target:addBoxZone({
                 name = 'sw_tow_counter_box_' .. key,
                 coords = counter.xyz,

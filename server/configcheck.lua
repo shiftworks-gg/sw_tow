@@ -153,6 +153,7 @@ function checker.run(cfg)
                 text(path .. '.label')
                 zone(path .. '.zone')
                 vector(path .. '.counter', 'vector4', true)
+                if get(path .. '.ped') ~= nil then text(path .. '.ped.model') end
                 local spots = get(path .. '.releaseSpots')
                 if type(spots) ~= 'table' or #spots == 0 then
                     problem(path .. '.releaseSpots', 'needs at least one vec4 spot')

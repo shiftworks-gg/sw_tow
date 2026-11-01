@@ -91,7 +91,7 @@ test.case('an abandoned vehicle pays 60% of a normal delivery', function()
     flow.drive(w, worker, truck, World.YARD)
     local bank = w:money(worker, 'bank')
     test.accepted(flow.deliver(w, worker, truck))
-    test.eq(w:money(worker, 'bank') - bank, math.floor(192 * 0.6))
+    test.eq(w:money(worker, 'bank') - bank, math.floor(201 * 0.6))
 end)
 
 test.case('no more than 4 open abandoned-vehicle calls', function()

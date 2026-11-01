@@ -54,11 +54,11 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 
 | Key | Default | What it does |
 |---|---|---|
-| `office.coords` | Strawberry tow yard | Counter for clock in, trucks and vehicle release |
+| `office.coords` | Hayes Depot, Strawberry | Counter for clock in and company trucks |
 | `office.ped` | mechanic with a clipboard | Clerk at the counter so players find it; `nil` for none |
 | `flatbed.motion` | `'animated'` | How the winch moves the vehicle: a computed path (always ends straight on the bed) or `'physics'` |
 | `blockedClasses`, `orderOnlyClasses` | boats, aircraft, trains; emergency, military | Never towable; towable only on an accepted call |
-| `yards` | one yard | Hand-over zone, release counter, exit spots. Add as many as you like |
+| `yards` | Davis impound, Innocence Blvd | Hand-over zone, release counter with a clerk, exit spots. Add as many as you like |
 | `payout.base`, `payout.perKm`, `payout.max` | 150, 60, 1500 | Delivery pay |
 | `fees` | 250 base, 100 per day | Release fee. The company account gets 60% |
 | `police.maxFine`, `police.ordersPerHour` | 5000, 6 | Limits for officers |

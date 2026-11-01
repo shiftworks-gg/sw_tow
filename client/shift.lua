@@ -136,50 +136,13 @@ local function officeOptions()
     return options
 end
 
----The clerk exists only on this client and only while the player is within 60 m. Aiming at the
----clerk offers the same options as the counter.
----@param office table config.office
----@param options table[] ox_target options of the counter
-local function createClerk(office, options)
-    local cfg = office.ped
-    if not cfg then return end
-    local c = cfg.coords or office.coords
-    local clerk
-    local function remove()
-        if clerk and DoesEntityExist(clerk) then DeletePed(clerk) end
-        clerk = nil
-    end
-    lib.points.new({
-        coords = c.xyz,
-        distance = 60.0,
-        onEnter = function()
-            if clerk then return end
-            local model = lib.requestModel(cfg.model)
-            if not model then return end
-            -- Stand on the floor under the point, whatever height the config coordinate was taken at.
-            local found, groundZ = GetGroundZFor_3dCoord(c.x, c.y, c.z + 1.0, false)
-            clerk = CreatePed(4, model, c.x, c.y, found and groundZ or c.z - 1.0, c.w, false, true)
-            SetModelAsNoLongerNeeded(model)
-            SetEntityInvincible(clerk, true)
-            FreezeEntityPosition(clerk, true)
-            SetBlockingOfNonTemporaryEvents(clerk, true)
-            if cfg.scenario then TaskStartScenarioInPlace(clerk, cfg.scenario, 0, true) end
-            exports.ox_target:addLocalEntity(clerk, options)
-        end,
-        onExit = remove,
-    })
-    AddEventHandler('onResourceStop', function(resource)
-        if resource == cache.resource then remove() end
-    end)
-end
-
 function shift.createOffice()
     local office = config.office
     local options = officeOptions()
     -- With a clerk the options live on the clerk only: a box around the same spot would list
     -- every option twice in ox_target.
     if office.ped then
-        createClerk(office, options)
+        impound.createClerk(office.ped.coords or office.coords, office.ped, options)
     else
         exports.ox_target:addBoxZone({
             name = 'sw_tow_office',

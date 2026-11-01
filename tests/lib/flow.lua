@@ -6,7 +6,7 @@ local test = require 'test'
 
 local flow = {}
 
-flow.YARD_KEY = 'strawberry'
+flow.YARD_KEY = 'davis'
 
 ---A player with the tow job, clocked in at the office.
 ---@param w table World

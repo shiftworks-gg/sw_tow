@@ -110,7 +110,7 @@ test.case('a police hold blocks release until an officer lifts it; the fine goes
     test.eq(row.fine, 500)
     test.eq(row.police_hold, 1)
 
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     local item = w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1]
     test.truthy(item.held, 'shown as held')
     test.refusedWith('impound.police_hold', w:call('sw_tow:server:release', t.owner, item.id))
@@ -118,7 +118,7 @@ test.case('a police hold blocks release until an officer lifts it; the fine goes
     w:teleport(t.cop, World.FAR)
     test.eq(#w:call('sw_tow:server:holdList', t.cop, flow.YARD_KEY), 0, 'officer away from the counter')
     test.eq(#w:call('sw_tow:server:holdList', t.worker, flow.YARD_KEY), 0, 'not an officer')
-    w:teleport(t.cop, World.OFFICE)
+    w:teleport(t.cop, World.COUNTER)
     local holds = w:call('sw_tow:server:holdList', t.cop, flow.YARD_KEY)
     test.eq(#holds, 1)
     test.eq(holds[1].note, 'Red zone')
@@ -143,7 +143,7 @@ end)
 test.case('a timed hold ends by itself', function()
     local w = newWorld()
     local t = heldCar(w, 2)
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     test.truthy(w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1].held)
     w:advance(2 * 3600 + 5)
     local item = w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1]

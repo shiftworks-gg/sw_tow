@@ -5,8 +5,8 @@ local vector = require 'vector'
 
 test.suite('server › delivery, pay and the impound yard')
 
--- Pickup is ~709 m from the yard: $150 + $60/km × 0.709 = $192 (rounded down).
-local PAY = 192
+-- Pickup is ~861 m from the yard: $150 + $60/km × 0.861 = $201 (rounded down).
+local PAY = 201
 -- Release right after delivery: $250 base + $0 class (sultan is a sedan) + the $192 tow.
 local FEE = 250 + PAY
 
@@ -177,7 +177,7 @@ test.case('release: the owner pays at the counter and gets the vehicle with keys
     w:teleport(owner, World.FAR)
     test.eq(#w:call('sw_tow:server:counterList', owner, flow.YARD_KEY), 0, 'nothing away from the counter')
 
-    w:teleport(owner, World.OFFICE)
+    w:teleport(owner, World.COUNTER)
     local list = w:call('sw_tow:server:counterList', owner, flow.YARD_KEY)
     test.eq(#list, 1)
     test.eq(list[1].fee, FEE)
@@ -191,7 +191,7 @@ test.case('release: the owner pays at the counter and gets the vehicle with keys
     local key = w.keysGiven[#w.keysGiven]
     test.eq(key.src, owner, 'keys to the owner')
     test.eq(w:entity(key.entity).plate, w:garageVehicle(t.vehicleId).plate, 'the right vehicle')
-    test.near(#(w:entity(key.entity).coords - World.TRUCK_SPAWN), 0, 0.01, 'on the release spot')
+    test.near(#(w:entity(key.entity).coords - World.RELEASE[1]), 0, 0.01, 'on the release spot')
     test.eq(w.deposits[1].account, 'tow')
     test.eq(w.deposits[1].amount, math.floor(FEE * 0.6), 'company share')
     test.eq(#w:call('sw_tow:server:counterList', owner, flow.YARD_KEY), 0, 'gone from the list')
@@ -202,7 +202,7 @@ test.case('release: cash first, then bank; not enough money is refused', functio
     local w = newWorld()
     local t = flow.towedToYard(w, { cash = FEE, bank = 0 })
     test.accepted(flow.deliver(w, t.worker, t.truck))
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     local id = w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1].id
     w.players[t.owner].money.cash = FEE - 1
     test.refusedWith('impound.not_enough', w:call('sw_tow:server:release', t.owner, id))
@@ -217,7 +217,7 @@ test.case('release: storage days are charged', function()
     local t = flow.towedToYard(w)
     test.accepted(flow.deliver(w, t.worker, t.truck))
     w:advance(26 * 3600 + 60)
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     test.eq(w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1].fee, FEE + 200)
 end)
 
@@ -225,19 +225,22 @@ test.case('release: refused without charging when the release spot is taken or t
     local w = newWorld()
     local t = flow.towedToYard(w)
     test.accepted(flow.deliver(w, t.worker, t.truck))
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     local id = w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1].id
     local bank = w:money(t.owner, 'bank')
 
-    local blocker = w:createVehicle({ model = 'asea', coords = World.TRUCK_SPAWN })
+    local blockers = {}
+    for i, spot in ipairs(World.RELEASE) do
+        blockers[i] = w:createVehicle({ model = 'asea', coords = spot })
+    end
     test.refusedWith('impound.no_spot', w:call('sw_tow:server:release', t.owner, id))
     test.eq(w:money(t.owner, 'bank'), bank)
     local sitter = w:addPlayer({})
-    w:enterVehicle(sitter, blocker)
+    w:enterVehicle(sitter, blockers[1])
     w:advance(1)
     test.refusedWith('impound.no_spot', w:call('sw_tow:server:release', t.owner, id)) -- a player's car counts too
     w:leaveVehicle(sitter)
-    w:removeEntity(blocker)
+    for _, blocker in ipairs(blockers) do w:removeEntity(blocker) end
 
     w.failNextSpawn = true
     w:advance(1)
@@ -251,11 +254,11 @@ test.case('release: only the owner, and only once', function()
     local w = newWorld()
     local t = flow.towedToYard(w)
     test.accepted(flow.deliver(w, t.worker, t.truck))
-    w:teleport(t.owner, World.OFFICE)
+    w:teleport(t.owner, World.COUNTER)
     local id = w:call('sw_tow:server:counterList', t.owner, flow.YARD_KEY)[1].id
 
     local thief = w:addPlayer({ bank = 10000 })
-    w:teleport(thief, World.OFFICE)
+    w:teleport(thief, World.COUNTER)
     test.eq(#w:call('sw_tow:server:counterList', thief, flow.YARD_KEY), 0, 'not in the thief\'s list')
     test.refused(w:call('sw_tow:server:release', thief, id))
 
@@ -268,7 +271,7 @@ end)
 
 test.case('held vehicles are remembered across a restart', function()
     local w = World.new(ROOT)
-    w.impoundRows[7] = { id = 7, yard = 'strawberry', plate = 'OLD', vehicle_id = 42, owner = 'CIDX', model = 'sultan',
+    w.impoundRows[7] = { id = 7, yard = 'davis', plate = 'OLD', vehicle_id = 42, owner = 'CIDX', model = 'sultan',
         reason = 'player', fine = 0, tow_charge = 0, police_hold = 0, stored_at = w.time - 3600 }
     w.nextImpoundId = 7
     w:start()
@@ -278,7 +281,7 @@ end)
 test.case('garbage from a client at the counter is refused without errors', function()
     local w = newWorld()
     local src = w:addPlayer({})
-    w:teleport(src, World.OFFICE)
+    w:teleport(src, World.COUNTER)
     for _, value in ipairs({ 'x', 1.5, -1, 0, {}, true }) do
         w:advance(1)
         test.refused(w:call('sw_tow:server:release', src, value))

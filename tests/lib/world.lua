@@ -40,8 +40,10 @@ local CLASSES = {
 
 World.OFFICE = vector.vec3(472.18, -1310.78, 29.22)
 World.TRUCK_SPAWN = vector.vec3(489.65, -1331.82, 29.33)
-World.YARD = vector.vec3(491.0, -1314.69, 29.25)
-World.FAR = vector.vec3(1200.0, -1300.0, 35.0)   -- ~710 m from the yard
+World.YARD = vector.vec3(408.38, -1638.62, 29.38)       -- centre of the hand-over bay
+World.COUNTER = vector.vec3(402.97, -1628.89, 29.29)    -- the yard's release counter
+World.RELEASE = { vector.vec3(395.58, -1645.16, 29.29), vector.vec3(397.96, -1647.01, 29.29) }
+World.FAR = vector.vec3(1200.0, -1300.0, 35.0)   -- far from the office and the yard
 
 local function newBag()
     local values = {}

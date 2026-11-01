@@ -33,14 +33,14 @@ test.case('typical mistakes are named', function()
         c.contracts.minDistance = 5000
         c.ui.accent = 'orange'
         c.blockedClasses[99] = true
-        c.yards.strawberry.releaseSpots = {}
+        c.yards.davis.releaseSpots = {}
         c.police.maxFine = 10.5
         c.sounds.winch = 'Move_U_D'
         c.sounds.secured = false
     end)
     for _, fragment in ipairs({
         'garage.vehicles.1.method', 'fees.companyShare', 'garage.platePrefix', 'office.coords: must be vec4',
-        'payout.account', 'contracts.minDistance', 'ui.accent', 'blockedClasses: 99', 'yards.strawberry.releaseSpots',
+        'payout.account', 'contracts.minDistance', 'ui.accent', 'blockedClasses: 99', 'yards.davis.releaseSpots',
         'police.maxFine: must be a whole number', 'sounds.winch',
     }) do
         test.truthy(has(list, fragment), 'names ' .. fragment .. '\n' .. table.concat(list, '\n'))
