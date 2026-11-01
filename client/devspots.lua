@@ -121,4 +121,7 @@ RegisterCommand('swtow_coords', function(_, args)
     print(('[sw_tow] %s%s%s'):format(args[1] or '', args[1] and ' = ' or '', text))
     lib.setClipboard(text)
     TriggerEvent('sw_tow:client:notify', text, 'inform')
+    if GetConvar('sw_tow_dev', '0') == '1' then
+        lib.callback('sw_tow:dev:coords', false, function() end, args[1], text)
+    end
 end, false)

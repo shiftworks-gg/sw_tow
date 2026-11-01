@@ -35,6 +35,14 @@ local function register(name, fn)
     end)
 end
 
+-- /swtow_coords also lands in coords.log on a dev server, so placed points can be read from disk.
+register('coords', function(_, name, text)
+    local line = ('%s  %s = %s\n'):format(os.date('%Y-%m-%d %H:%M:%S'), tostring(name or '-'), tostring(text))
+    local old = LoadResourceFile(cache.resource, 'coords.log') or ''
+    SaveResourceFile(cache.resource, 'coords.log', old .. line, -1)
+    return true
+end)
+
 local function testPlate()
     for _ = 1, 50 do
         local plate = ('%s%04d'):format(TEST_PLATE, math.random(0, 9999))
