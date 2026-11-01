@@ -108,9 +108,14 @@ end
 ---@param payments SwPayment[]
 local function pay(payments, distance, callType)
     for _, payment in ipairs(payments) do
-        framework.addMoney(payment.src, config.payout.account, payment.amount, 'sw-tow-delivery')
+        if config.payout.collect == 'office' then
+            storage.addOwed(payment.citizenid, payment.amount)
+            TriggerClientEvent('sw_tow:client:notify', payment.src, locale('impound.earned', util.money(payment.amount)), 'success')
+        else
+            framework.addMoney(payment.src, config.payout.account, payment.amount, 'sw-tow-delivery')
+            TriggerClientEvent('sw_tow:client:notify', payment.src, locale('impound.paid', util.money(payment.amount)), 'success')
+        end
         storage.logDelivery(payment.citizenid, callType, payment.amount, distance)
-        TriggerClientEvent('sw_tow:client:notify', payment.src, locale('impound.paid', util.money(payment.amount)), 'success')
         log.payout(payment.src, 'delivery', ('%s, %d m, %s'):format(callType, math.floor(distance), util.money(payment.amount)))
         local current = shift.get(payment.src)
         if current then

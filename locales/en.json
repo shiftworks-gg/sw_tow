@@ -16,14 +16,19 @@
     "ended": "Shift ended.",
     "wrong_job": "Only tow company employees can clock in here.",
     "end": "End shift",
-    "end_truck": "Drive the truck back to the depot and hand it in there.",
-    "end_now": "You have no truck out, so the shift ends now.",
+    "end_truck": "Drive the truck back to the depot and hand it in. Your pay is paid out there.",
     "end_drops_call": "Your current call goes back to the list.",
     "keep_working": "Keep working",
     "keep_working_hint": "The route to the depot is removed.",
     "return_route": "Route set to the depot. Hand in the truck there to end your shift.",
     "return_hint": "[E] Hand in the truck and end the shift",
-    "depot_blip": "Truck return"
+    "depot_blip": "Truck return",
+    "paid": "Shift pay received: %s.",
+    "paid_earlier": "Pay from an earlier shift: %s.",
+    "not_at_office": "End your shift at the office counter.",
+    "end_office": "Go back to the office and end your shift at the counter.",
+    "return_office_route": "Route set to the office. End your shift at the counter.",
+    "office_blip": "Tow office"
   },
   "garage": {
     "title": "Company trucks",
@@ -37,7 +42,15 @@
     "spot_busy": "The truck spot is blocked. Clear it first.",
     "too_far": "Bring the truck back to the yard first.",
     "has_cargo": "Unload the vehicle first.",
-    "lost": "Your company truck is gone. Take a new one at the counter."
+    "lost": "Your company truck is gone. Take a new one at the counter.",
+    "deposit_taken": "Deposit of %s taken. You get it back when you hand the truck in.",
+    "deposit_back": "Truck handed in. Deposit returned: %s.",
+    "deposit_damage": "Truck handed in. Deposit returned: %s, %s kept for damage.",
+    "deposit_lost": "The truck was not handed in. The deposit of %s is kept.",
+    "no_deposit": "Not enough money for the truck deposit.",
+    "deposit_hint": "Deposit %s",
+    "replace": "Take a new truck",
+    "replace_hint": "Your current truck stays where it is. Its deposit is kept."
   },
   "tow": {
     "winch": "Hook the winch cable",
@@ -127,7 +140,8 @@
     "no_cargo": "Nothing is loaded on the truck.",
     "too_fast": "Delivery refused: the trip was too fast.",
     "no_order": "This vehicle has an owner and no tow order.",
-    "owner_notice": "Your vehicle %s was towed to %s."
+    "owner_notice": "Your vehicle %s was towed to %s.",
+    "earned": "Delivered: %s added to your shift pay."
   },
   "contracts": {
     "message": "Broken down at the roadside. Doors locked, hazards on."
@@ -187,6 +201,7 @@
     "m": "%s m",
     "do_return": "Return the truck",
     "title_return": "End of shift",
-    "at_depot": "Hand in at"
+    "at_depot": "Hand in at",
+    "do_office": "Back to the office"
   }
 }

@@ -9,9 +9,17 @@ package.path = here .. '/lib/?.lua;' .. package.path
 local test = require 'test'
 local World = require 'world'
 
----A fresh server for one test.
+---A fresh server for one test. Most tests check one delivery or action on its own, so pay goes
+---straight to the account and trucks need no deposit, unless the test's `config` sets them.
 ---@param options? table see World.new
 function _G.newWorld(options)
+    options = options or {}
+    local configure = options.config
+    options.config = function(config)
+        config.garage.deposit = 0
+        config.payout.collect = 'instant'
+        if configure then configure(config) end
+    end
     return World.new(root, options):start()
 end
 _G.ROOT = root

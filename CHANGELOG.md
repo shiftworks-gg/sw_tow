@@ -9,7 +9,9 @@ First release.
 - Flatbed: ramps go down, a parking guide tints the ground behind the truck, the winch lines the vehicle up and pulls it up the ramps on a cable everyone nearby sees, and it ends straight in the middle of the bed. The winch checks that the way is clear first, and nobody can block it by standing in it. `flatbed.motion` picks a computed path (default) or the game's physics.
 - Tow truck: the game's own tow arm.
 - Four kinds of calls: players call for their own vehicle (`/calltow`), officers order a tow with a fine and a hold, NPC contracts appear when the server is quiet, and vehicles left standing become calls after 30 minutes.
-- End shift from the call list (`F6`): a route leads back to the depot, `E` at the truck spot hands the truck in and ends the shift. Without a truck the shift ends at once.
+- End shift from the call list (`F6`): a route leads back to the depot, `E` at the truck spot hands the truck in and ends the shift. Without a truck the route leads to the office counter.
+- Pay is collected at the office by default (`payout.collect`): it adds up during the shift and is paid when the shift ends there. Nothing is lost on a disconnect; it is paid at the next clock in.
+- Truck deposit (`garage.deposit`, $500): paid back when the truck is handed in, less damage (`garage.damageFromDeposit`). A truck left somewhere or wrecked keeps it; a wrecked one can be replaced at the counter. A truck removed by the game or another script in working order gives it back.
 - A second worker in the truck gets 50% of the delivery pay on top.
 - Sounds for ramps, winch motor, straps and tow arm, from the game's own audio, heard by everyone nearby (`config.sounds`, `/swtow_sounds` to pick by ear).
 

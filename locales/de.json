@@ -16,14 +16,19 @@
     "ended": "Schicht beendet.",
     "wrong_job": "Nur Mitarbeiter des Abschleppdienstes können hier einstempeln.",
     "end": "Schicht beenden",
-    "end_truck": "Bring den Truck zum Depot zurück und gib ihn dort ab.",
-    "end_now": "Du hast keinen Truck draußen, die Schicht endet sofort.",
+    "end_truck": "Bring den Truck zum Depot zurück und gib ihn ab. Dort wird dein Lohn ausgezahlt.",
     "end_drops_call": "Dein aktueller Auftrag geht zurück in die Liste.",
     "keep_working": "Weiterarbeiten",
     "keep_working_hint": "Die Route zum Depot wird entfernt.",
     "return_route": "Route zum Depot gesetzt. Gib dort den Truck ab, um die Schicht zu beenden.",
     "return_hint": "[E] Truck abgeben und Schicht beenden",
-    "depot_blip": "Truck-Rückgabe"
+    "depot_blip": "Truck-Rückgabe",
+    "paid": "Schichtlohn erhalten: %s.",
+    "paid_earlier": "Lohn aus einer früheren Schicht: %s.",
+    "not_at_office": "Beende deine Schicht am Schalter im Büro.",
+    "end_office": "Geh zurück ins Büro und beende die Schicht am Schalter.",
+    "return_office_route": "Route zum Büro gesetzt. Beende die Schicht am Schalter.",
+    "office_blip": "Abschleppbüro"
   },
   "garage": {
     "title": "Firmenwagen",
@@ -37,7 +42,15 @@
     "spot_busy": "Der Stellplatz ist blockiert. Mach ihn zuerst frei.",
     "too_far": "Bring den Wagen zuerst zurück auf den Hof.",
     "has_cargo": "Lade zuerst das Fahrzeug ab.",
-    "lost": "Dein Firmenwagen ist weg. Hol dir am Schalter einen neuen."
+    "lost": "Dein Firmenwagen ist weg. Hol dir am Schalter einen neuen.",
+    "deposit_taken": "Kaution von %s einbehalten. Du bekommst sie zurück, wenn du den Truck abgibst.",
+    "deposit_back": "Truck abgegeben. Kaution zurück: %s.",
+    "deposit_damage": "Truck abgegeben. Kaution zurück: %s, %s für Schäden einbehalten.",
+    "deposit_lost": "Der Truck wurde nicht abgegeben. Die Kaution von %s ist verloren.",
+    "no_deposit": "Nicht genug Geld für die Truck-Kaution.",
+    "deposit_hint": "Kaution %s",
+    "replace": "Neuen Truck nehmen",
+    "replace_hint": "Dein aktueller Truck bleibt, wo er ist. Seine Kaution ist verloren."
   },
   "tow": {
     "winch": "Windenseil einhaken",
@@ -127,7 +140,8 @@
     "no_cargo": "Auf dem Wagen ist nichts geladen.",
     "too_fast": "Übergabe abgelehnt: Die Fahrt war zu schnell.",
     "no_order": "Dieses Fahrzeug hat einen Besitzer und keinen Abschleppauftrag.",
-    "owner_notice": "Dein Fahrzeug %s wurde zu %s abgeschleppt."
+    "owner_notice": "Dein Fahrzeug %s wurde zu %s abgeschleppt.",
+    "earned": "Abgeliefert: %s zu deinem Schichtlohn hinzugefügt."
   },
   "contracts": {
     "message": "Am Straßenrand liegengeblieben. Türen verriegelt, Warnblinker an."
@@ -187,6 +201,7 @@
     "m": "%s m",
     "do_return": "Truck zurückbringen",
     "title_return": "Schichtende",
-    "at_depot": "Abgeben bei"
+    "at_depot": "Abgeben bei",
+    "do_office": "Zurück ins Büro"
   }
 }

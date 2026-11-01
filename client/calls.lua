@@ -31,14 +31,16 @@ local typeIcons = {
 }
 
 ---What the route blip points at: 'call' (the vehicle to pick up), 'yard' (where to hand it over)
----or 'depot' (ending the shift: where the truck is handed in).
----@type 'call'|'yard'|'depot'?
+---or 'depot'/'office' (ending the shift: where the truck is handed in, or the office counter).
+---@type 'call'|'yard'|'depot'|'office'?
 local routeTarget
 
----The worker chose "End shift" and is driving the truck back.
+---The worker chose "End shift": 'depot' while taking the truck back, 'office' without a truck.
+---@type 'depot'|'office'|false
 local returning = false
 
----True while the worker is taking the truck back to end the shift (for the panel).
+---Where the worker is heading to end the shift, false while working (for the panel).
+---@return 'depot'|'office'|false
 function calls.returning()
     return returning
 end
@@ -213,7 +215,10 @@ local function runRoute()
 
         -- Ending the shift: at the truck spot, [E] hands the truck in.
         local atDepot = false
-        if returning then
+        if returning == 'depot' and not shift.hasTruck() then
+            -- The truck is gone (wrecked and cleared, removed): the shift ends at the office instead.
+            calls.routeToOffice()
+        elseif returning == 'depot' then
             local truck = shift.truck()
             local spawn = config.garage.spawn.xyz
             atDepot = truck ~= nil and #(GetEntityCoords(truck) - spawn) <= config.garage.returnDistance
@@ -279,8 +284,8 @@ function calls.drop(id)
     return ok, errorKey
 end
 
----Ends the shift on the server: hands in the truck when it is at the depot, or ends at once
----without one.
+---Ends the shift on the server: hands in the truck when it is at the depot; without one, at the
+---office counter. The pay comes with it.
 ---@return boolean ok
 function calls.finishShift()
     local ok, errorKey = lib.callback.await('sw_tow:server:endShift', false)
@@ -292,7 +297,17 @@ function calls.finishShift()
     return ok == true
 end
 
----"End shift" in the calls menu. A truck goes back to the depot first; the panel and a route lead there.
+---Without a truck the shift ends at the office counter: a route leads there.
+function calls.routeToOffice()
+    clearRoute()
+    returning = 'office'
+    drawRoute(config.office.coords.xyz, 68, locale('shift.office_blip'))
+    routeTarget = 'office'
+    notify(locale('shift.return_office_route'), 'inform')
+end
+
+---"End shift" in the calls menu. A truck goes back to the depot first, without one the worker
+---walks back to the office; the panel and a route lead there. The pay is paid out on arrival.
 function calls.endShift()
     if not shift.onShift() then return end
     local truck = shift.truck()
@@ -303,15 +318,15 @@ function calls.endShift()
         local ok, errorKey = calls.drop(activeCallId)
         if not ok then return notify(locale(errorKey or 'common.failed'), 'error') end
     end
-    if not truck then return calls.finishShift() end
+    if not shift.hasTruck() then return calls.routeToOffice() end
     clearRoute()
-    returning = true
+    returning = 'depot'
     drawRoute(config.garage.spawn.xyz, 67, locale('shift.depot_blip'))
     routeTarget = 'depot'
     notify(locale('shift.return_route'), 'inform')
 end
 
----"Keep working": drops the way back to the depot.
+---"Keep working": drops the way back.
 function calls.cancelEnd()
     if not returning then return end
     returning = false
@@ -319,11 +334,11 @@ function calls.cancelEnd()
 end
 
 local function endShiftOption()
-    if returning and shift.truck() then
+    if returning then
         return { title = locale('shift.keep_working'), description = locale('shift.keep_working_hint'), icon = 'rotate-left',
             onSelect = calls.cancelEnd }
     end
-    local description = locale(shift.truck() and 'shift.end_truck' or 'shift.end_now')
+    local description = locale(shift.hasTruck() and 'shift.end_truck' or 'shift.end_office')
     if activeCallId then description = description .. ' ' .. locale('shift.end_drops_call') end
     return { title = locale('shift.end'), description = description, icon = 'right-from-bracket', onSelect = calls.endShift }
 end

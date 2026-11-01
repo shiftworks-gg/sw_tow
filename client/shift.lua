@@ -2,6 +2,7 @@
 ---share the office. The server decides everything; these options only ask.
 local config = require 'config'
 local framework = require 'bridge.loader'
+local util = require 'shared.util'
 local notify = require 'client.notify'
 local impound = require 'client.impound'
 
@@ -20,6 +21,13 @@ function shift.truck()
     local truck = NetToVeh(truckNet)
     if truck == 0 or not DoesEntityExist(truck) then return end
     return truck
+end
+
+---True while the worker has a company truck out, wherever it is (also when it is not near enough
+---to exist on this client).
+---@return boolean
+function shift.hasTruck()
+    return truckNet ~= nil
 end
 
 local function hasJob()
@@ -48,9 +56,10 @@ function shift.clockOut()
 end
 
 ---@param index integer config.garage.vehicles index
+---@param replace? boolean the current truck is not coming back: it is removed and its deposit kept
 ---@return boolean ok, string? errorKey
-function shift.takeTruck(index)
-    local ok, netIdOrError = lib.callback.await('sw_tow:server:takeTruck', false, index)
+function shift.takeTruck(index, replace)
+    local ok, netIdOrError = lib.callback.await('sw_tow:server:takeTruck', false, index, replace == true)
     if not ok then return false, netIdOrError end
     truckNet = netIdOrError
     return true
@@ -63,15 +72,19 @@ function shift.returnTruck()
     return ok, errorKey
 end
 
-local function takeTruckMenu()
+---@param replace? boolean
+local function takeTruckMenu(replace)
     local options = {}
+    local deposit = config.garage.deposit or 0
     for index, option in ipairs(config.garage.vehicles) do
+        local description = locale(option.method == 'flatbed' and 'garage.flatbed_hint' or 'garage.hook_hint')
+        if deposit > 0 then description = description .. ' · ' .. locale('garage.deposit_hint', util.money(deposit)) end
         options[#options + 1] = {
             title = option.label,
-            description = locale(option.method == 'flatbed' and 'garage.flatbed_hint' or 'garage.hook_hint'),
+            description = description,
             icon = 'truck',
             onSelect = function()
-                local ok, errorKey = shift.takeTruck(index)
+                local ok, errorKey = shift.takeTruck(index, replace)
                 if ok then
                     notify(locale('garage.taken', option.label), 'success')
                 else
@@ -102,8 +115,29 @@ local function officeOptions()
             icon = 'fa-solid fa-truck-pickup',
             label = locale('garage.take'),
             distance = 2.5,
-            canInteract = function() return shift.onShift() and not shift.truck() end,
-            onSelect = takeTruckMenu,
+            canInteract = function() return shift.onShift() and not shift.hasTruck() end,
+            onSelect = function() takeTruckMenu(false) end,
+        },
+        {
+            -- The truck is wrecked, stuck or far away: a new one, the old one's deposit is kept.
+            name = 'sw_tow_replace_truck',
+            icon = 'fa-solid fa-rotate',
+            label = locale('garage.replace'),
+            distance = 2.5,
+            canInteract = function()
+                local truck = shift.truck()
+                local nearSpot = truck and #(GetEntityCoords(truck) - config.garage.spawn.xyz) <= config.garage.returnDistance
+                return shift.onShift() and shift.hasTruck() and not nearSpot
+            end,
+            onSelect = function()
+                local ok = lib.alertDialog({
+                    header = locale('garage.replace'),
+                    content = locale('garage.replace_hint'),
+                    centered = true,
+                    cancel = true,
+                })
+                if ok == 'confirm' then takeTruckMenu(true) end
+            end,
         },
         {
             name = 'sw_tow_return_truck',
@@ -113,7 +147,8 @@ local function officeOptions()
             canInteract = function() return shift.onShift() and shift.truck() ~= nil end,
             onSelect = function()
                 local ok, errorKey = shift.returnTruck()
-                result(ok, errorKey, 'garage.returned')
+                -- With a deposit the server's message says what came back.
+                result(ok, errorKey, (config.garage.deposit or 0) == 0 and 'garage.returned' or nil)
             end,
         },
         {

@@ -36,6 +36,15 @@ local SCHEMA = {
         INDEX `idx_citizen` (`citizenid`, `created_at`)
     )
     ]],
+    -- Pay a worker has earned but not collected yet (payout.collect = 'office'), and deposits owed
+    -- back after a disconnect. Kept here so a crash never loses it.
+    [[
+    CREATE TABLE IF NOT EXISTS `sw_tow_pay` (
+        `citizenid`  VARCHAR(64) NOT NULL PRIMARY KEY,
+        `amount`     INT         NOT NULL DEFAULT 0,
+        `updated_at` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+    ]],
 }
 
 function storage.migrate()
@@ -146,6 +155,34 @@ function storage.logDelivery(citizenid, callType, payout, distance)
     MySQL.insert('INSERT INTO sw_tow_log (citizenid, call_type, payout, distance_m) VALUES (?, ?, ?, ?)', {
         citizenid, callType, payout, math.floor(distance),
     })
+end
+
+---Adds to what the company owes a worker.
+---@param citizenid string
+---@param amount integer
+function storage.addOwed(citizenid, amount)
+    if amount <= 0 then return end
+    MySQL.update.await(
+        'INSERT INTO sw_tow_pay (citizenid, amount) VALUES (?, ?) ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)',
+        { citizenid, amount })
+end
+
+---What the company owes a worker, without paying it.
+---@param citizenid string
+---@return integer
+function storage.owed(citizenid)
+    return MySQL.scalar.await('SELECT amount FROM sw_tow_pay WHERE citizenid = ?', { citizenid }) or 0
+end
+
+---Takes everything owed to a worker off the books, for paying it out. Only one caller gets it.
+---@param citizenid string
+---@return integer amount
+function storage.takeOwed(citizenid)
+    local amount = storage.owed(citizenid)
+    if amount <= 0 then return 0 end
+    local changed = MySQL.update.await('UPDATE sw_tow_pay SET amount = amount - ? WHERE citizenid = ? AND amount >= ?',
+        { amount, citizenid, amount })
+    return changed == 1 and amount or 0
 end
 
 return storage

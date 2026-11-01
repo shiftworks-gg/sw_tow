@@ -14,6 +14,7 @@ local COLUMNS = {
     sw_tow_impound = { 'id', 'yard', 'plate', 'vehicle_id', 'owner', 'model', 'reason', 'note', 'fine', 'tow_charge',
         'police_hold', 'hold_until', 'towed_by', 'stored_at', 'released_at', 'released_by', 'paid' },
     sw_tow_log = { 'id', 'citizenid', 'call_type', 'payout', 'distance_m', 'created_at' },
+    sw_tow_pay = { 'citizenid', 'amount', 'updated_at' },
 }
 
 ---@alias SwCheckStatus 'PASS'|'WARN'|'FAIL'

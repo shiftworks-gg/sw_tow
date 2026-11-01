@@ -286,7 +286,7 @@
     for (let i = 1; i <= 3; i++) c.toggle('step-' + i, step === i);
 
     set('clock', clock(state.onShift || 0));
-    const doing = returning ? text('do_return') : job ? text('do_' + STEP_KEY[step]) : text('title_idle');
+    const doing = returning ? text(state.returning === 'office' ? 'do_office' : 'do_return') : job ? text('do_' + STEP_KEY[step]) : text('title_idle');
     const stepName = returning ? text('title_return') : job ? text('step_' + STEP_KEY[step]) : '';
     if (returning) {
       set('kind', text('title_return'));

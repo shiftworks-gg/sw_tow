@@ -126,6 +126,8 @@ function checker.run(cfg)
 
     vector('garage.spawn', 'vector4')
     number('garage.returnDistance', 1)
+    integer('garage.deposit', 0)
+    boolean('garage.damageFromDeposit')
     local prefix = get('garage.platePrefix')
     if type(prefix) ~= 'string' or not prefix:match('^[%u%d]+$') or #prefix > 4 then
         problem('garage.platePrefix', 'must be 1 to 4 capital letters or digits (plates have 8 characters)')
@@ -236,6 +238,7 @@ function checker.run(cfg)
     integer('payout.perKm', 0)
     integer('payout.max', 0)
     oneOf('payout.account', { 'cash', 'bank' })
+    oneOf('payout.collect', { 'office', 'instant' })
     number('payout.partnerShare', 0, 1)
     number('payout.maxSpeed', 5)
 

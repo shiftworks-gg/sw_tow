@@ -94,6 +94,7 @@ function World.new(root, options)
         impoundRows = {},
         nextImpoundId = 0,
         deliveryLog = {},
+        owed = {},
         garageVehicles = {},
         nextGarageId = 0,
         keysGiven = {},
@@ -252,7 +253,7 @@ function World:addPlayer(spec)
         src = src,
         ped = ped,
         name = spec.name or ('Player' .. src),
-        citizenid = 'CID' .. src,
+        citizenid = spec.citizenid or ('CID' .. src),
         job = { name = spec.job or 'unemployed', type = spec.jobType, grade = 0, onDuty = spec.onDuty ~= false, isBoss = false },
         money = { cash = spec.cash or 0, bank = spec.bank or 0 },
     }
@@ -619,6 +620,21 @@ function World:fakeStorage()
 
     function storage.logDelivery(citizenid, callType, payout, distance)
         w.deliveryLog[#w.deliveryLog + 1] = { citizenid = citizenid, call_type = callType, payout = payout, distance_m = math.floor(distance) }
+    end
+
+    function storage.addOwed(citizenid, amount)
+        if amount <= 0 then return end
+        w.owed[citizenid] = (w.owed[citizenid] or 0) + amount
+    end
+
+    function storage.owed(citizenid)
+        return w.owed[citizenid] or 0
+    end
+
+    function storage.takeOwed(citizenid)
+        local amount = w.owed[citizenid] or 0
+        w.owed[citizenid] = 0
+        return amount
     end
 
     return storage

@@ -54,6 +54,8 @@ return {
     garage = {
         spawn = vec4(489.65, -1331.82, 29.33, 306.5),       -- Where a company truck appears.
         returnDistance = 20.0,                              -- A truck can be returned this close to the spawn point.
+        deposit = 500,                                      -- $ taken when a truck goes out, paid back when it is handed in. 0 = no deposit.
+        damageFromDeposit = true,                           -- Damage on the returned truck comes off the deposit (a wreck keeps it all).
         platePrefix = 'SWT',                                -- Plates are this prefix plus digits, 8 characters max.
         vehicles = {                                        -- Trucks a worker can take out, by model name.
             { model = 'flatbed', label = 'Flatbed', method = 'flatbed' },
@@ -180,6 +182,8 @@ return {
         perKm = 60,                         -- $ per km between pickup and yard.
         max = 1500,                         -- Cap per delivery.
         account = 'bank',                   -- Where workers are paid: 'cash' or 'bank'.
+        collect = 'office',                 -- 'office': pay adds up during the shift and is paid when the worker ends it
+                                            -- at the office (bring the truck back to get it); 'instant': after every delivery.
         partnerShare = 0.5,                 -- A partner in the truck gets this share of the payout on top.
         maxSpeed = 30.0,                    -- m/s used for the minimum trip time. Faster deliveries are refused.
     },
