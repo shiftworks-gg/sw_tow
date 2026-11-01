@@ -101,4 +101,10 @@ AddEventHandler('playerDropped', function()
     ordersByOfficer[source] = nil
 end)
 
+---Forgets an officer's recent orders (filming: every take sends one).
+---@param src integer
+function police.resetLimit(src)
+    ordersByOfficer[src] = nil
+end
+
 return police

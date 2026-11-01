@@ -154,18 +154,20 @@ end
 
 ---An unowned test vehicle (plate SWTE…), spawned by the server like any parked car.
 ---@param drop? boolean let it fall from where it is instead of putting it on the ground below
+---@param plate? string a fixed plate (filming), else a test plate
 ---@return integer?
-local function spawnVehicle(model, at, drop)
-    local netId = lib.callback.await('sw_tow:dev:spawnVehicle', false, model, vec4Table(at))
+local function spawnVehicle(model, at, drop, plate)
+    local netId = lib.callback.await('sw_tow:dev:spawnVehicle', false, model, vec4Table(at), plate)
     local vehicle = netId and fromNet(netId)
     if vehicle and not drop then moveVehicle(vehicle, at.xyz, at.w) end
     return vehicle
 end
 
 ---A test vehicle owned by you, as if bought.
+---@param fixed? string a fixed plate (filming), else a test plate
 ---@return integer? vehicle, integer? vehicleId, string? plate
-local function spawnOwned(model, at)
-    local netId, vehicleId, plate = lib.callback.await('sw_tow:dev:ownedVehicle', false, model, vec4Table(at))
+local function spawnOwned(model, at, fixed)
+    local netId, vehicleId, plate = lib.callback.await('sw_tow:dev:ownedVehicle', false, model, vec4Table(at), fixed)
     if not netId then return nil, nil, vehicleId end
     local vehicle = fromNet(netId)
     if vehicle then moveVehicle(vehicle, at.xyz, at.w) end
@@ -266,10 +268,10 @@ local function standsOnGround(vehicle)
         and math.abs(GetEntityRoll(vehicle)) < 12.0 and math.abs(GetEntityPitch(vehicle)) < 12.0
 end
 
----Into the yard's hand-over zone, with the cargo.
+---Into the yard's hand-over zone, with the cargo, facing the way the bay is driven into.
 local function driveToYard(truck)
     sitIn(truck)
-    moveVehicle(truck, YARD.zone.coords, GetEntityHeading(truck))
+    moveVehicle(truck, YARD.zone.coords, YARD.zone.rotation or GetEntityHeading(truck))
     getOut()
     Wait(1000) -- the server catches up with the move
 end
@@ -311,14 +313,35 @@ local function findCall(predicate)
     end, 5000)
 end
 
+---The car a video follows: model, plate and paint, the same in every shot.
+---@class SwFilmCar
+---@field model string
+---@field plate string
+---@field colors? integer[] primary, secondary, pearl, wheels
+
+---Paints a vehicle as the film's car.
+---@param vehicle integer
+---@param look SwFilmCar?
+local function paint(vehicle, look)
+    local c = look and look.colors
+    if not c or not control(vehicle) then return end
+    SetVehicleModKit(vehicle, 0)
+    SetVehicleColours(vehicle, c[1], c[2] or c[1])
+    SetVehicleExtraColours(vehicle, c[3] or 0, c[4] or 0)
+    SetVehicleDirtLevel(vehicle, 3.0)
+end
+
 ---Owned car behind a flatbed on the site, called in by you, accepted by you, loaded and brought
 ---into the yard. Used by the impound and police scenarios.
 ---@param withCall fun(car: integer, plate: string): table? creates the call and returns it
-local function ownedCarToYard(withCall)
+---@param look? SwFilmCar the film's car instead of a Sultan with a test plate
+local function ownedCarToYard(withCall, look)
     local truck = truckOnSite(FLATBED)
-    local car, vehicleId, plate = spawnOwned('sultan', behind(truck, 'sultan', 3.5))
+    local model = look and look.model or 'sultan'
+    local car, vehicleId, plate = spawnOwned(model, behind(truck, model, 3.5), look and look.plate)
     expect(car, 'an owned test car is spawned', plate)
     ---@cast car integer
+    paint(car, look)
     local call = expect(withCall(car, plate --[[@as string]]), 'the call shows in the call list')
     Wait(1100) -- calls and accepting share a 1 s limit
     local accepted, acceptError = calls.accept(call)
@@ -914,9 +937,39 @@ function film.geometry(truck)
 end
 
 ---@param owned? boolean registered to you like a bought car (calls need that)
-function film.vehicle(model, at, owned)
-    if owned then return spawnOwned(model, at) end
-    return spawnVehicle(model, at)
+---@param look? SwFilmCar the film's car: its plate and paint (the model is the first argument)
+function film.vehicle(model, at, owned, look)
+    local plate = look and look.plate
+    local vehicle
+    if owned then vehicle = spawnOwned(model, at, plate) else vehicle = spawnVehicle(model, at, nil, plate) end
+    if vehicle then paint(vehicle, look) end
+    return vehicle
+end
+
+---Parks the company truck back at the depot, out of a shot that should not show it.
+function film.truckAway()
+    local truck = shift.truck()
+    if truck then moveVehicle(truck, config.garage.spawn.xyz, config.garage.spawn.w) end
+    return true
+end
+
+---Removes the film's car and its records.
+function film.purge(plate)
+    return lib.callback.await('sw_tow:dev:purge', false, plate)
+end
+
+---A police order (fine, hold) for a plate across town: only the call arrives. Returns the call id.
+---@param at vector3|vector4
+function film.order(plate, at, fine, hold)
+    return lib.callback.await('sw_tow:dev:filmOrder', false, plate, { x = at.x, y = at.y, z = at.z }, fine or 0, hold == true, 24)
+end
+
+---A police order for a vehicle standing here. Returns the call id.
+function film.orderFor(vehicle, fine, hold)
+    expect(lib.callback.await('sw_tow:dev:policeOrder', false, VehToNet(vehicle), fine or 0, hold == true, 24), 'a police order is placed')
+    local plate = util.trimPlate(GetVehicleNumberPlateText(vehicle))
+    local call = findCall(function(c) return c.plate == plate and c.type == 'police' end)
+    return call and call.id
 end
 
 film.behind = behind
@@ -936,6 +989,7 @@ end
 function film.panel(visible)
     SendNUIMessage({ type = 'visible', value = visible and shift.onShift() })
     flatbed.setGuide(visible)
+    calls.setZoneVisible(visible)
     return true
 end
 
@@ -949,21 +1003,28 @@ function film.closeCall(id)
 end
 
 ---A flatbed on the way to the yard: the truck 14 m in front of `at`, an owned car called in,
----accepted and loaded, picked up an hour ago (so the hand-over is not refused as too fast).
+---accepted and loaded, picked up an hour ago (so the hand-over is not refused as too fast). With
+---`fine`/`hold` the call is a police order.
+---@param look? SwFilmCar
 ---@return integer truck, integer car, string plate
-function film.towing(at)
+function film.towing(at, look, fine, hold)
     site = at
-    local t = ownedCarToYard(function(car)
+    local t = ownedCarToYard(function(car, plate)
+        if fine or hold then
+            expect(lib.callback.await('sw_tow:dev:policeOrder', false, VehToNet(car), fine or 0, hold == true, 24), 'a police order is placed')
+            return findCall(function(call) return call.plate == plate and call.type == 'police' end)
+        end
         local id = film.call(car, '')
         return findCall(function(call) return call.id == id end)
-    end)
+    end, look)
     lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
     return t.truck, t.car, t.plate
 end
 
 ---A car of yours in the yard, impounded 27 hours ago; with `fine`/`hold` it came on a police order.
+---@param look? SwFilmCar
 ---@return string plate
-function film.impound(at, fine, hold)
+function film.impound(at, fine, hold, look)
     site = at
     local t = ownedCarToYard(function(car, plate)
         if fine or hold then
@@ -972,7 +1033,7 @@ function film.impound(at, fine, hold)
         end
         local id = film.call(car, '')
         return findCall(function(call) return call.id == id end)
-    end)
+    end, look)
     driveToYard(t.truck)
     lib.callback.await('sw_tow:dev:ageCargo', false, VehToNet(t.truck), 3600)
     Wait(600)
@@ -1057,8 +1118,11 @@ end
 ---Where the yard's places are: the hand-over zone, the counter (the clerk, facing customers) and
 ---the first release spot.
 function film.places()
-    local c = counter()
-    return { zone = YARD.zone.coords, counter = c, release = YARD.releaseSpots[1] }
+    local c, z = counter(), YARD.zone
+    return {
+        zone = vec4(z.coords.x, z.coords.y, z.coords.z, z.rotation or 0.0), counter = c, release = YARD.releaseSpots[1],
+        depot = config.garage.spawn,
+    }
 end
 
 ---Into the yard's hand-over zone with the cargo.

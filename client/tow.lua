@@ -101,8 +101,15 @@ local function load(truck, target)
             return lib.callback.await('sw_tow:server:secured', false, truckNet)
         end
 
+        -- The hook goes on the bumper that faces the truck. Left at 0,0,0 the game picks the point
+        -- itself and some models end up hooked by the boot.
+        local min, max = GetModelDimensions(GetEntityModel(target))
+        local back = GetOffsetFromEntityInWorldCoords(target, 0.0, min.y, 0.0)
+        local front = GetOffsetFromEntityInWorldCoords(target, 0.0, max.y, 0.0)
+        local arm = rearOf(truck)
+        local byRear = #(back - arm) < #(front - arm)
         SetVehicleTowTruckArmPosition(truck, 1.0)
-        AttachVehicleToTowTruck(truck, target, false, 0.0, 0.0, 0.0)
+        AttachVehicleToTowTruck(truck, target, byRear, 0.0, byRear and (min.y + 0.1) or (max.y - 0.1), min.z + 0.45)
         SetVehicleTowTruckArmPosition(truck, 0.0)
         -- The arm only catches a vehicle close behind it; the server must not count a miss as cargo.
         local deadline = GetGameTimer() + 1000

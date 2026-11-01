@@ -13,6 +13,7 @@ local calls = require 'server.calls'
 local contracts = require 'server.contracts'
 local abandoned = require 'server.abandoned'
 local impound = require 'server.impound'
+local police = require 'server.police'
 
 if GetConvar('sw_tow_dev', '0') ~= '1' then return end
 
@@ -69,16 +70,47 @@ register('stats', function(src)
     return current and { deliveries = current.deliveries, earned = current.earned } or false
 end)
 
+---A fixed plate (the car a video follows from shot to shot): removes the vehicle that carries it
+---and its records first, so every take starts from the same state. Only the tester's own rows.
+local function fixedPlate(src, plate)
+    if type(plate) ~= 'string' or not plate:match('^[%w ]+$') or #plate > 8 then error('bad plate') end
+    calls.closePlate(plate)
+    police.resetLimit(src)
+    for _, vehicle in ipairs(GetAllVehicles() --[[@as integer[] ]]) do
+        if framework.getPlate(vehicle) == plate then framework.deleteVehicle(vehicle) end
+    end
+    MySQL.update.await('DELETE FROM sw_tow_impound WHERE plate = ?', { plate })
+    MySQL.update.await('DELETE FROM player_vehicles WHERE plate = ? AND citizenid = ?', { plate, framework.getCitizenId(src) })
+    return plate
+end
+
 ---A vehicle nobody owns, as if parked by the game.
-register('spawnVehicle', function(_, model, coords)
-    local netId = framework.spawnVehicle(model, vec4Of(coords), { plate = testPlate() })
+---@param plate? string a fixed plate instead of a test plate
+register('spawnVehicle', function(src, model, coords, plate)
+    local netId = framework.spawnVehicle(model, vec4Of(coords), { plate = plate and fixedPlate(src, plate) or testPlate() })
     return netId
 end)
 
+---Filming: removes the fixed-plate car and its records.
+register('purge', function(src, plate)
+    fixedPlate(src, plate)
+    return true
+end)
+
+---Filming: a police order for a plate at a place, with no vehicle there (the call arrives while the
+---worker is across town; the shot only shows the call coming in).
+register('filmOrder', function(src, plate, coords, fine, hold, holdHours)
+    return calls.add({
+        type = 'police', caller = src, plate = plate, coords = vec3(coords.x + 0.0, coords.y + 0.0, coords.z + 0.0),
+        message = 'Parked on the pavement, blocking a hydrant', fine = fine, hold = hold, holdHours = holdHours,
+    })
+end)
+
 ---A vehicle owned by the tester, registered in the garage script like a bought car.
-register('ownedVehicle', function(src, model, coords)
+---@param plate? string a fixed plate instead of a test plate
+register('ownedVehicle', function(src, model, coords, plate)
     local citizenid = framework.getCitizenId(src)
-    local plate = testPlate()
+    plate = plate and fixedPlate(src, plate) or testPlate()
     local vehicleId
     if integrations.names.garage == 'qbx_garages' then
         local err

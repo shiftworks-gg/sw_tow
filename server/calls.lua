@@ -90,6 +90,14 @@ function calls.add(call)
     return nextId
 end
 
+---Closes every call for a plate (filming: each take starts without the last take's call).
+---@param plate string
+function calls.closePlate(plate)
+    for id, call in pairs(active) do
+        if call.plate == plate then remove(id) end
+    end
+end
+
 ---Is there an open or accepted call for this vehicle?
 ---@param vehicle integer
 ---@return boolean

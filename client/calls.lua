@@ -15,6 +15,14 @@ function calls.active()
     return activeCall
 end
 
+---Shots filmed without interface hide the hand-over bay (the zone itself still works).
+local filmHidden = false
+
+---@param visible boolean
+function calls.setZoneVisible(visible)
+    filmHidden = not visible
+end
+
 local typeIcons = {
     player = 'phone',
     police = 'shield-halved',
@@ -75,31 +83,67 @@ end
 local drawnZone
 
 local ZONE_COLOR = { 255, 122, 46 }
+local ZONE_READY = { 64, 200, 110 }
 
----Outline and walls of a box zone, so the worker sees where to stop the truck.
----@param zone { coords: vector3, size: vector3, rotation?: number }
-local function drawZone(zone)
-    local r, g, b = ZONE_COLOR[1], ZONE_COLOR[2], ZONE_COLOR[3]
+---A point of the zone on the ground: `lx` m to the zone's right, `ly` m along it (its rotation is
+---the way the truck drives in).
+local function zonePoint(zone, lx, ly)
     local rad = math.rad(zone.rotation or 0.0)
     local c, s = math.cos(rad), math.sin(rad)
+    local x, y = zone.coords.x + lx * c - ly * s, zone.coords.y + lx * s + ly * c
+    local found, z = GetGroundZFor_3dCoord(x, y, zone.coords.z + 2.0, false)
+    return vec3(x, y, (found and z or zone.coords.z - 0.9) + 0.04)
+end
+
+---The zone painted on the ground in strips, so it follows kerbs and slopes instead of floating
+---as a box through walls. Measured once per zone: the ground does not move.
+local painted = {} ---@type table<table, { strips: vector3[][], arrows: vector3[][] }>
+
+local function paint(zone)
+    if painted[zone] then return painted[zone] end
     local hx, hy = zone.size.x / 2, zone.size.y / 2
-    local z = zone.coords.z - 0.8
-    local points = {}
-    for i, sign in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do
-        local lx, ly = sign[1] * hx, sign[2] * hy
-        points[i] = vec3(zone.coords.x + lx * c - ly * s, zone.coords.y + lx * s + ly * c, z)
+    local steps = math.max(2, math.ceil(zone.size.y / 2.5))
+    local strips = {}
+    for i = 0, steps - 1 do
+        local y0, y1 = -hy + zone.size.y * i / steps, -hy + zone.size.y * (i + 1) / steps
+        strips[#strips + 1] = { zonePoint(zone, -hx, y0), zonePoint(zone, hx, y0), zonePoint(zone, hx, y1), zonePoint(zone, -hx, y1) }
     end
-    for i = 1, 4 do
-        local a, p = points[i], points[i % 4 + 1]
-        DrawLine(a.x, a.y, a.z, p.x, p.y, p.z, r, g, b, 255)
-        DrawLine(a.x, a.y, a.z + 1.5, p.x, p.y, p.z + 1.5, r, g, b, 255)
-        DrawLine(a.x, a.y, a.z, a.x, a.y, a.z + 1.5, r, g, b, 255)
-        DrawPoly(a.x, a.y, a.z + 1.5, p.x, p.y, p.z + 1.5, a.x, a.y, a.z, r, g, b, 60)
-        DrawPoly(p.x, p.y, p.z, a.x, a.y, a.z, p.x, p.y, p.z + 1.5, r, g, b, 60)
+    -- Chevrons down the middle, pointing the way in.
+    local arrows, w = {}, math.min(hx * 0.5, 1.2)
+    for _, y in ipairs({ -hy * 0.45, 0.0, hy * 0.45 }) do
+        arrows[#arrows + 1] = { zonePoint(zone, -w, y - w * 0.8), zonePoint(zone, 0.0, y), zonePoint(zone, w, y - w * 0.8) }
     end
-    local size = zone.size
-    ---@diagnostic disable-next-line: param-type-mismatch -- no texture dictionary: the native takes nil
-    DrawMarker(1, zone.coords.x, zone.coords.y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, size.x, size.y, 0.4, r, g, b, 40, false, false, 2, false, nil, nil, false)
+    painted[zone] = { strips = strips, arrows = arrows }
+    return painted[zone]
+end
+
+local function line(a, b, r, g, bl)
+    DrawLine(a.x, a.y, a.z, b.x, b.y, b.z, r, g, bl, 255)
+end
+
+---The hand-over bay on the ground, so the worker sees where to stop the truck; green once the truck
+---stands in it.
+---@param zone { coords: vector3, size: vector3, rotation?: number }
+---@param ready? boolean
+local function drawZone(zone, ready)
+    local color = ready and ZONE_READY or ZONE_COLOR
+    local r, g, b = color[1], color[2], color[3]
+    local p = paint(zone)
+    for i, q in ipairs(p.strips) do
+        -- Both windings, so the tint shows from any camera angle.
+        DrawPoly(q[1].x, q[1].y, q[1].z, q[2].x, q[2].y, q[2].z, q[3].x, q[3].y, q[3].z, r, g, b, 55)
+        DrawPoly(q[3].x, q[3].y, q[3].z, q[2].x, q[2].y, q[2].z, q[1].x, q[1].y, q[1].z, r, g, b, 55)
+        DrawPoly(q[1].x, q[1].y, q[1].z, q[3].x, q[3].y, q[3].z, q[4].x, q[4].y, q[4].z, r, g, b, 55)
+        DrawPoly(q[4].x, q[4].y, q[4].z, q[3].x, q[3].y, q[3].z, q[1].x, q[1].y, q[1].z, r, g, b, 55)
+        line(q[1], q[4], r, g, b)
+        line(q[2], q[3], r, g, b)
+        if i == 1 then line(q[1], q[2], r, g, b) end
+        if i == #p.strips then line(q[4], q[3], r, g, b) end
+    end
+    for _, a in ipairs(p.arrows) do
+        line(a[1], a[2], r, g, b)
+        line(a[2], a[3], r, g, b)
+    end
 end
 
 ---Once the vehicle is on the truck the route leads to the nearest yard; if it comes off again
@@ -146,9 +190,9 @@ local function runRoute()
         local near = zone ~= nil and #(GetEntityCoords(cache.ped) - zone.coords) < 200.0
         local inside = false
         if zone and near then
-            drawZone(zone)
             local truck = shift.truck()
             inside = truck ~= nil and util.inZone(GetEntityCoords(truck), zone)
+            if not filmHidden then drawZone(zone, inside) end
         end
         if inside ~= hinted then
             if inside then lib.showTextUI(locale('tow.yard_hint')) else lib.hideTextUI() end

@@ -111,11 +111,14 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 -- Placing things for config.lua: stand where it goes, face the way it should face, run
--- /swtow_coords. Prints your position as vec4 to F8 and copies it to the clipboard.
-RegisterCommand('swtow_coords', function()
-    local c, h = GetEntityCoords(cache.ped), GetEntityHeading(cache.ped)
+-- /swtow_coords [name]. Prints your position as vec4 to F8 and copies it to the clipboard. In a
+-- vehicle it takes the vehicle's middle and heading (park a truck in a hand-over bay, run it).
+RegisterCommand('swtow_coords', function(_, args)
+    local vehicle = GetVehiclePedIsIn(cache.ped, false)
+    local entity = vehicle ~= 0 and vehicle or cache.ped
+    local c, h = GetEntityCoords(entity), GetEntityHeading(entity)
     local text = ('vec4(%.2f, %.2f, %.2f, %.1f)'):format(c.x, c.y, c.z, h)
-    print('[sw_tow] ' .. text)
+    print(('[sw_tow] %s%s%s'):format(args[1] or '', args[1] and ' = ' or '', text))
     lib.setClipboard(text)
     TriggerEvent('sw_tow:client:notify', text, 'inform')
 end, false)
