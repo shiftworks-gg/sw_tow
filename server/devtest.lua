@@ -69,8 +69,13 @@ register('prepare', function(src)
     return true
 end)
 
+-- Pay waiting at the office (payout.collect = 'office') counts as the worker's money too.
 register('money', function(src)
-    return { cash = framework.getMoney(src, 'cash'), bank = framework.getMoney(src, 'bank') }
+    local citizenid = framework.getCitizenId(src)
+    return {
+        cash = framework.getMoney(src, 'cash'),
+        bank = framework.getMoney(src, 'bank') + (citizenid and storage.owed(citizenid) or 0),
+    }
 end)
 
 register('stats', function(src)
