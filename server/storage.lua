@@ -157,14 +157,19 @@ function storage.logDelivery(citizenid, callType, payout, distance)
     })
 end
 
+local ADD_OWED = 'INSERT INTO sw_tow_pay (citizenid, amount) VALUES (?, ?) ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)'
+
 ---Adds to what the company owes a worker.
 ---@param citizenid string
 ---@param amount integer
-function storage.addOwed(citizenid, amount)
+---@param noWait? boolean send without waiting (while the resource stops)
+function storage.addOwed(citizenid, amount, noWait)
     if amount <= 0 then return end
-    MySQL.update.await(
-        'INSERT INTO sw_tow_pay (citizenid, amount) VALUES (?, ?) ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)',
-        { citizenid, amount })
+    if noWait then
+        MySQL.update(ADD_OWED, { citizenid, amount })
+    else
+        MySQL.update.await(ADD_OWED, { citizenid, amount })
+    end
 end
 
 ---What the company owes a worker, without paying it.

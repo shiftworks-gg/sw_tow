@@ -19,6 +19,7 @@ local shift = {}
 ---@field method 'flatbed'|'hook'?
 ---@field deposit integer? paid for the truck that is out
 ---@field condition number? truck condition 0..1, sampled while it is out
+---@field taking boolean? a truck is spawning for this worker right now
 
 ---@type table<integer, SwShift>
 local shifts = {}
@@ -139,10 +140,19 @@ local function payOwed(src, key)
     log.payout(src, 'pay', util.money(amount))
 end
 
----Is the worker's truck parked back at the truck spot, with the worker next to it?
+local truckSpots = util.truckSpots(config.garage)
+
+---Is the truck parked back at one of the truck spots?
+---@param truck integer
+---@return boolean
+local function atTruckSpot(truck)
+    local _, distance = util.nearestSpot(GetEntityCoords(truck), truckSpots)
+    return distance <= config.garage.returnDistance
+end
+
+---Is the worker's truck parked back at a truck spot, with the worker next to it?
 local function truckAtDepot(src, truck)
-    local at = GetEntityCoords(truck)
-    return #(at - config.garage.spawn.xyz) <= config.garage.returnDistance and guard.near(src, at, 15.0)
+    return atTruckSpot(truck) and guard.near(src, GetEntityCoords(truck), 15.0)
 end
 
 ---@param src integer
@@ -227,32 +237,43 @@ lib.callback.register('sw_tow:server:takeTruck', function(src, index, replace)
         return false
     end
     if current.truck and Entity(current.truck).state['sw_tow:cargo'] then return false, 'garage.has_cargo' end
-    if lib.getClosestVehicle(config.garage.spawn.xyz, 3.0, true) then return false, 'garage.spot_busy' end
+    -- One worker at a time per request: a second tap while the first truck spawns is refused.
+    if current.taking then return false, 'common.wait' end
 
+    local spot, releaseSpot = guard.takeSpot('trucks', truckSpots)
+    if not spot or not releaseSpot then return false, 'garage.spot_busy' end
     local deposit = config.garage.deposit or 0
     local paidFrom = charge(src, deposit, 'sw-tow-deposit')
-    if not paidFrom then return false, 'garage.no_deposit' end
-    local function refund()
+    if not paidFrom then
+        releaseSpot()
+        return false, 'garage.no_deposit'
+    end
+    local function undo()
+        releaseSpot()
+        current.taking = nil
         if deposit > 0 then framework.addMoney(src, paidFrom, deposit, 'sw-tow-deposit-refund') end
     end
 
     local plate = freePlate()
     if not plate then
-        refund()
+        undo()
         return false
     end
-    local ok, netId, truck = pcall(framework.spawnVehicle, option.model, config.garage.spawn, { plate = plate })
+    current.taking = true
+    local ok, netId, truck = pcall(framework.spawnVehicle, option.model, spot, { plate = plate })
     if not ok or not truck or truck == 0 then
-        refund()
+        undo()
         log.warn(src, 'take_truck', ('spawn failed: %s'):format(tostring(netId)))
         return false
     end
     -- The worker may have left while the truck was spawning.
     if shifts[src] ~= current then
-        refund()
+        undo()
         framework.deleteVehicle(truck)
         return false
     end
+    releaseSpot()
+    current.taking = nil
 
     if current.truck then forfeitTruck(src) end
     current.truck, current.method, current.deposit, current.condition = truck, option.method, deposit, 1.0
@@ -269,9 +290,7 @@ end)
 lib.callback.register('sw_tow:server:returnTruck', function(src)
     local current = shifts[src]
     if not current or not current.truck or not DoesEntityExist(current.truck) then return false end
-    if #(GetEntityCoords(current.truck) - config.garage.spawn.xyz) > config.garage.returnDistance then
-        return false, 'garage.too_far'
-    end
+    if not atTruckSpot(current.truck) then return false, 'garage.too_far' end
     if Entity(current.truck).state['sw_tow:cargo'] then return false, 'garage.has_cargo' end
     handInTruck(src)
     return true
@@ -344,7 +363,10 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= cache.resource then return end
-    for src in pairs(shifts) do
+    for src, current in pairs(shifts) do
+        -- A restart is nobody's fault: deposits are owed back. The resource is stopping, so the
+        -- write is sent without waiting for it.
+        if current.truck and (current.deposit or 0) > 0 then storage.addOwed(current.citizenid, current.deposit, true) end
         deleteTruck(src)
         Player(src).state:set('sw_tow:shift', false, true)
     end

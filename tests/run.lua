@@ -27,7 +27,7 @@ _G.ROOT = root
 local specs = {
     'static/syntax', 'static/locales', 'static/config',
     'server/util', 'server/shift', 'server/tow', 'server/calls', 'server/impound', 'server/police',
-    'server/contracts', 'server/abandoned',
+    'server/contracts', 'server/abandoned', 'server/together',
 }
 for _, name in ipairs(specs) do
     local chunk, err = loadfile(here .. '/' .. name .. '.lua')

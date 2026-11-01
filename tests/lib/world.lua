@@ -39,7 +39,7 @@ local CLASSES = {
 }
 
 World.OFFICE = vector.vec3(472.18, -1310.78, 29.22)
-World.TRUCK_SPAWN = vector.vec3(489.65, -1331.82, 29.33)
+World.TRUCK_SPAWN = vector.vec3(489.65, -1331.82, 29.33)   -- the first truck spot
 World.YARD = vector.vec3(408.38, -1638.62, 29.38)       -- centre of the hand-over bay
 World.COUNTER = vector.vec3(402.97, -1628.89, 29.29)    -- the yard's release counter
 World.RELEASE = { vector.vec3(395.58, -1645.16, 29.29), vector.vec3(397.96, -1647.01, 29.29) }
@@ -345,6 +345,40 @@ function World:call(name, src, ...)
     return self:runNow(fn, src, ...)
 end
 
+---Several players' callbacks at the same moment: each runs until it waits (a spawn, the database),
+---then the next one starts, as on a real server. Returns each call's results in order.
+---@param calls { [1]: string, [2]: integer, [integer]: any }[] { name, src, args... }
+---@return table[]
+function World:callTogether(calls)
+    local running = {}
+    for i, c in ipairs(calls) do
+        local fn = assert(self.callbacks[c[1]], 'no callback ' .. c[1])
+        running[i] = { co = coroutine.create(fn), args = table.pack(table.unpack(c, 2)) }
+    end
+    local results, left = {}, #running
+    for _ = 1, 100000 do
+        if left == 0 then return results end
+        for i, r in ipairs(running) do
+            if not r.done then
+                local out
+                if r.args then
+                    out = table.pack(coroutine.resume(r.co, table.unpack(r.args, 1, r.args.n)))
+                    r.args = nil
+                else
+                    out = table.pack(coroutine.resume(r.co))
+                end
+                if not out[1] then error(('handler error: %s'):format(tostring(out[2])), 0) end
+                if coroutine.status(r.co) == 'dead' then
+                    r.done, left = true, left - 1
+                    results[i] = table.pack(table.unpack(out, 2, out.n))
+                end
+            end
+        end
+        self:setTimer(self.timer + 10)
+    end
+    error('callbacks never finished')
+end
+
 ---Runs a chat command as a player.
 function World:command(name, src, args)
     local fn = assert(self.commands[name], 'no command ' .. name)
@@ -458,6 +492,8 @@ function World:fakeFramework()
             w.failNextSpawn = false
             error('spawn failed (test)', 0)
         end
+        -- Like the real game: the vehicle exists only after a moment, other requests run meanwhile.
+        if w.spawnDelay then coroutine.yield('wait', w.spawnDelay) end
         local entity = w:createVehicle({ model = model, coords = coords, heading = coords.w, plate = props and props.plate })
         return w.entities[entity].net, entity
     end
@@ -622,7 +658,7 @@ function World:fakeStorage()
         w.deliveryLog[#w.deliveryLog + 1] = { citizenid = citizenid, call_type = callType, payout = payout, distance_m = math.floor(distance) }
     end
 
-    function storage.addOwed(citizenid, amount)
+    function storage.addOwed(citizenid, amount, _)
         if amount <= 0 then return end
         w.owed[citizenid] = (w.owed[citizenid] or 0) + amount
     end
@@ -819,6 +855,14 @@ function World:buildEnv()
         if p.vehicle and w.entities[p.vehicle] then return p.vehicle end
         if last and p.lastVehicle and w.entities[p.lastVehicle] then return p.lastVehicle end
         return 0
+    end
+    env.GetAllPeds = function()
+        local list = {}
+        for id, e in pairs(w.entities) do
+            if e.type == 1 then list[#list + 1] = id end
+        end
+        table.sort(list)
+        return list
     end
     env.GetAllVehicles = function()
         local list = {}

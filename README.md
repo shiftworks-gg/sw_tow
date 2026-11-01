@@ -61,6 +61,7 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `yards` | Davis impound, Innocence Blvd | Hand-over zone, release counter with a clerk, exit spots. Add as many as you like |
 | `payout.base`, `payout.perKm`, `payout.max` | 150, 60, 1500 | Delivery pay |
 | `payout.collect` | `'office'` | `'office'`: pay adds up during the shift and is paid when the worker ends it at the office or hands the truck in; `'instant'`: after every delivery. Uncollected pay is kept in the database, also across disconnects |
+| `garage.spawns` | one spot at Hayes Depot | Truck spots. A truck appears on the first clear one (no vehicle, nobody standing on it); add one per worker who may take a truck at the same moment |
 | `garage.deposit`, `garage.damageFromDeposit` | 500, true | Taken when a truck goes out, paid back when it is handed in, less damage. A truck left out or wrecked keeps it; `0` turns it off |
 | `fees` | 250 base, 100 per day | Release fee. The company account gets 60% |
 | `police.maxFine`, `police.ordersPerHour` | 5000, 6 | Limits for officers |

@@ -116,7 +116,7 @@ local function snapshot()
     local returning = calls.returning()
     if returning == 'depot' and truck then
         state.returning = 'depot'
-        state.route = { to = 'depot', where = config.office.label, metres = #(origin - config.garage.spawn.xyz) }
+        state.route = { to = 'depot', where = config.office.label, metres = select(2, util.nearestSpot(origin, util.truckSpots(config.garage))) }
     elseif returning == 'office' then
         state.returning = 'office'
         state.route = { to = 'office', where = config.office.label, metres = #(origin - config.office.coords.xyz) }

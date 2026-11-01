@@ -126,7 +126,7 @@ local function officeOptions()
             distance = 2.5,
             canInteract = function()
                 local truck = shift.truck()
-                local nearSpot = truck and #(GetEntityCoords(truck) - config.garage.spawn.xyz) <= config.garage.returnDistance
+                local nearSpot = truck and select(2, util.nearestSpot(GetEntityCoords(truck), util.truckSpots(config.garage))) <= config.garage.returnDistance
                 return shift.onShift() and shift.hasTruck() and not nearSpot
             end,
             onSelect = function()

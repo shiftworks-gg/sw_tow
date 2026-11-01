@@ -342,3 +342,11 @@ test.case('pay at the office: a disconnect keeps the pay and the deposit for the
     test.truthy(w:noticed(back, 'shift.paid_earlier'))
     w:assertNoErrors()
 end)
+
+test.case('a restart owes every deposit back; it is paid at the next clock in', function()
+    local w = newWorld({ config = function(config) config.garage.deposit = 500 end })
+    local src = flow.worker(w, { bank = 1000 })
+    flow.truck(w, src, 1)
+    w:trigger('onResourceStop', nil, 'sw_tow')
+    test.eq(w.owed[w.players[src].citizenid], 500)
+end)

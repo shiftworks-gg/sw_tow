@@ -63,13 +63,6 @@ local function charge(src, amount, reason)
     end
 end
 
----@param yard table
----@return vector4?
-local function freeReleaseSpot(yard)
-    for _, spot in ipairs(yard.releaseSpots) do
-        if not lib.getClosestVehicle(spot.xyz, 3.0, true) then return spot end
-    end
-end
 
 local function counterCoords(yard)
     return (yard.counter or config.office.coords).xyz
@@ -253,6 +246,7 @@ lib.callback.register('sw_tow:server:release', function(src, recordId)
     if not util.isInteger(recordId) then return false end
     if releasing[recordId] or not guard.rate(src, 'release') then return false, 'common.wait' end
     releasing[recordId] = true
+    local releaseSpot
     local ok, result, errorKey = pcall(function()
         local record = storage.getActive(recordId)
         local citizenid = framework.getCitizenId(src)
@@ -263,7 +257,8 @@ lib.callback.register('sw_tow:server:release', function(src, recordId)
 
         local vehicle = integrations.garage.getVehicle(record.vehicle_id)
         if not vehicle then return false, 'common.failed' end
-        local spot = freeReleaseSpot(yard)
+        local spot
+        spot, releaseSpot = guard.takeSpot('release:' .. record.yard, yard.releaseSpots)
         if not spot then return false, 'impound.no_spot' end
 
         local fee = impound.fee(record, framework.getVehicleClass(joaat(record.model)))
@@ -295,6 +290,8 @@ lib.callback.register('sw_tow:server:release', function(src, recordId)
         log.payout(src, 'release', ('%s, %s'):format(record.plate, util.money(fee)))
         return true
     end)
+    -- The released vehicle stands on its spot now (or the spawn failed): free the reservation.
+    if releaseSpot then releaseSpot() end
     releasing[recordId] = nil
     if not ok then
         lib.print.error(result)

@@ -37,6 +37,8 @@ for index, option in ipairs(config.garage.vehicles) do
 end
 local YARD_KEY = next(config.yards) --[[@as string]]
 local YARD = config.yards[YARD_KEY] --[[@as table]]
+---The first truck spot: where tests park and hand back the truck.
+local DEPOT = util.truckSpots(config.garage)[1]
 
 -- Results ----------------------------------------------------------------------------------------
 
@@ -211,8 +213,8 @@ local function placeTruck(index, at)
     local wanted = config.garage.vehicles[index]
     local truck = shift.truck()
     if truck and Entity(truck).state['sw_tow:method'] ~= wanted.method then
-        moveVehicle(truck, config.garage.spawn.xyz, config.garage.spawn.w)
-        teleport(config.garage.spawn.xyz + vec3(3.0, 0.0, 0.0))
+        moveVehicle(truck, DEPOT.xyz, DEPOT.w)
+        teleport(DEPOT.xyz + vec3(3.0, 0.0, 0.0))
         expect(shift.returnTruck(), 'the other truck is returned')
         truck = nil
     end
@@ -420,12 +422,12 @@ scenario('points', 'Models and configured places', function()
         end, 3000)
         check(clerk, 'the clerk stands at the counter')
     end
-    ground('truck spawn', config.garage.spawn.xyz)
+    ground('truck spawn', DEPOT.xyz)
     for key, yard in pairs(config.yards) do
         ground(('yard %s hand-over zone'):format(key), yard.zone.coords)
         for i, spot in ipairs(yard.releaseSpots) do
             ground(('yard %s release spot %d'):format(key, i), spot.xyz)
-            if #(spot.xyz - config.garage.spawn.xyz) < 4.0 then
+            if #(spot.xyz - DEPOT.xyz) < 4.0 then
                 record('WARN', ('yard %s release spot %d is the truck spawn: a truck left there blocks releases (add a spot of its own)'):format(key, i))
             end
         end
@@ -468,9 +470,9 @@ scenario('shift', 'Clock in, panel, trucks, clock out', function()
     Wait(5100)
     check(select(2, shift.takeTruck(FLATBED)) == 'garage.already_out', 'a second truck is refused')
 
-    moveVehicle(truck, config.garage.spawn.xyz + vec3(60.0, 0.0, 0.0), config.garage.spawn.w)
+    moveVehicle(truck, DEPOT.xyz + vec3(60.0, 0.0, 0.0), DEPOT.w)
     check(select(2, shift.returnTruck()) == 'garage.too_far', 'returning it far from the garage is refused')
-    moveVehicle(truck, config.garage.spawn.xyz, config.garage.spawn.w)
+    moveVehicle(truck, DEPOT.xyz, DEPOT.w)
     check(shift.returnTruck(), 'returning it at the garage works')
     check(waitFor(function() return not DoesEntityExist(truck) end, 3000), 'the returned truck is gone')
 
@@ -949,7 +951,7 @@ end
 ---Parks the company truck back at the depot, out of a shot that should not show it.
 function film.truckAway()
     local truck = shift.truck()
-    if truck then moveVehicle(truck, config.garage.spawn.xyz, config.garage.spawn.w) end
+    if truck then moveVehicle(truck, DEPOT.xyz, DEPOT.w) end
     return true
 end
 
@@ -1121,7 +1123,7 @@ function film.places()
     local c, z = counter(), YARD.zone
     return {
         zone = vec4(z.coords.x, z.coords.y, z.coords.z, z.rotation or 0.0), counter = c, release = YARD.releaseSpots[1],
-        depot = config.garage.spawn,
+        depot = DEPOT,
     }
 end
 

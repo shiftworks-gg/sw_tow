@@ -52,8 +52,10 @@ return {
     },
 
     garage = {
-        spawn = vec4(489.65, -1331.82, 29.33, 306.5),       -- Where a company truck appears.
-        returnDistance = 20.0,                              -- A truck can be returned this close to the spawn point.
+        spawns = {                                          -- Truck spots: a truck appears on the first one that is clear
+            vec4(489.65, -1331.82, 29.33, 306.5),           -- (no vehicle, nobody standing on it). One spot per worker who
+        },                                                  -- may take a truck at the same moment; add more for busy servers.
+        returnDistance = 20.0,                              -- A truck can be handed back this close to any truck spot.
         deposit = 500,                                      -- $ taken when a truck goes out, paid back when it is handed in. 0 = no deposit.
         damageFromDeposit = true,                           -- Damage on the returned truck comes off the deposit (a wreck keeps it all).
         platePrefix = 'SWT',                                -- Plates are this prefix plus digits, 8 characters max.

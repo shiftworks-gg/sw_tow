@@ -124,7 +124,16 @@ function checker.run(cfg)
         vector('office.ped.coords', 'vector4', true)
     end
 
-    vector('garage.spawn', 'vector4')
+    if get('garage.spawns') ~= nil then
+        local spots = get('garage.spawns')
+        if type(spots) ~= 'table' or #spots == 0 then
+            problem('garage.spawns', 'needs at least one vec4 spot')
+        else
+            for i = 1, #spots do vector(('garage.spawns.%d'):format(i), 'vector4') end
+        end
+    else
+        vector('garage.spawn', 'vector4')
+    end
     number('garage.returnDistance', 1)
     integer('garage.deposit', 0)
     boolean('garage.damageFromDeposit')

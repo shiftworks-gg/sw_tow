@@ -50,6 +50,28 @@ function util.entityFromBag(bagName, timeout)
     return entity, arrived
 end
 
+---Where company trucks are parked out and handed back: garage.spawns, or the single garage.spawn
+---of older configs.
+---@param garage table config.garage
+---@return vector4[]
+function util.truckSpots(garage)
+    if type(garage.spawns) == 'table' and #garage.spawns > 0 then return garage.spawns end
+    return { garage.spawn }
+end
+
+---The spot of a list closest to a point.
+---@param coords vector3
+---@param spots vector4[]
+---@return vector4 spot, number distance
+function util.nearestSpot(coords, spots)
+    local best, bestDistance = spots[1], math.huge
+    for _, spot in ipairs(spots) do
+        local d = #(coords - spot.xyz)
+        if d < bestDistance then best, bestDistance = spot, d end
+    end
+    return best, bestDistance
+end
+
 ---@param value any
 ---@return boolean
 function util.isInteger(value)

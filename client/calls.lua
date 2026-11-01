@@ -220,10 +220,10 @@ local function runRoute()
             calls.routeToOffice()
         elseif returning == 'depot' then
             local truck = shift.truck()
-            local spawn = config.garage.spawn.xyz
-            atDepot = truck ~= nil and #(GetEntityCoords(truck) - spawn) <= config.garage.returnDistance
+            local spotDistance = truck and select(2, util.nearestSpot(GetEntityCoords(truck), util.truckSpots(config.garage)))
+            atDepot = truck ~= nil and spotDistance <= config.garage.returnDistance
                 and #(GetEntityCoords(cache.ped) - GetEntityCoords(truck)) <= 15.0
-            near = near or (truck ~= nil and #(GetEntityCoords(truck) - spawn) < 60.0)
+            near = near or (spotDistance ~= nil and spotDistance < 60.0)
             if atDepot and not handingIn and IsControlJustReleased(0, 38) then
                 handingIn = true
                 CreateThread(function()
@@ -321,7 +321,7 @@ function calls.endShift()
     if not shift.hasTruck() then return calls.routeToOffice() end
     clearRoute()
     returning = 'depot'
-    drawRoute(config.garage.spawn.xyz, 67, locale('shift.depot_blip'))
+    drawRoute(util.truckSpots(config.garage)[1].xyz, 67, locale('shift.depot_blip'))
     routeTarget = 'depot'
     notify(locale('shift.return_route'), 'inform')
 end
