@@ -9,10 +9,12 @@ First release.
 - Flatbed: ramps go down, a parking guide tints the ground behind the truck, the winch lines the vehicle up and pulls it up the ramps on a cable everyone nearby sees, and it ends straight in the middle of the bed. The winch checks that the way is clear first, and nobody can block it by standing in it. `flatbed.motion` picks a computed path (default) or the game's physics.
 - Tow truck: the game's own tow arm.
 - Four kinds of calls: players call for their own vehicle (`/calltow`), officers order a tow with a fine and a hold, NPC contracts appear when the server is quiet, and vehicles left standing become calls after 30 minutes.
+- End shift from the call list (`F6`): a route leads back to the depot, `E` at the truck spot hands the truck in and ends the shift. Without a truck the shift ends at once.
 - A second worker in the truck gets 50% of the delivery pay on top.
 - Sounds for ramps, winch motor, straps and tow arm, from the game's own audio, heard by everyone nearby (`config.sounds`, `/swtow_sounds` to pick by ear).
 
 **The impound yard**
+- Default yard: the Davis impound on Innocence Blvd, with its own clerk at the release counter (`yards.*.ped`) and two release spots.
 - Release fee: base + vehicle class + days in storage + police fine + the tow itself. Owners pay at the counter and drive off with their keys. The company account gets 60%.
 - Police holds: an officer sets one with the tow order and lifts it at the counter; a held vehicle is not released.
 - Works with `qbx_garages`: the public impound lot cannot hand out a vehicle held in the yard. Nothing in your garage script is edited.

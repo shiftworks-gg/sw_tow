@@ -17,6 +17,7 @@ local STRING_KEYS = {
     'waiting', 'calls_open', 'open_short', 'take_hint', 'no_calls',
     'truck', 'no_truck', 'cargo', 'empty', 'earned', 'tows', 'km', 'm',
     'status_winching', 'status_lowering', 'status_secured', 'status_hooked',
+    'do_return', 'title_return', 'at_depot',
 }
 
 ---The server's ox_lib colour, when its owner set one (setr ox:primaryColor), so the panel matches
@@ -109,9 +110,13 @@ local function snapshot()
         }
     end
 
-    -- Where to go next: the yard with a vehicle on board, else the accepted call.
+    -- Where to go next: the depot when ending the shift, the yard with a vehicle on board, else the
+    -- accepted call.
     local origin = GetEntityCoords(truck or cache.ped)
-    if state.cargo then
+    if calls.returning() and truck then
+        state.returning = true
+        state.route = { to = 'depot', where = config.office.label, metres = #(origin - config.garage.spawn.xyz) }
+    elseif state.cargo then
         local yard, distance = nearestYard(origin)
         if yard then state.route = { to = 'yard', where = yard.label or streetAt(yard.zone.coords), metres = distance } end
     elseif call then

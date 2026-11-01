@@ -74,7 +74,7 @@
     card: () => `
       <div class="card">
         <div class="card__head">
-          <div class="card__badge" data-b="icon"></div>
+          <div class="card__logo" data-b="logo"></div>
           <div class="card__titles"><div class="lbl" data-b="kind"></div><div class="card__title" data-b="title"></div></div>
           <div class="card__clock num"><span class="dot"></span><span data-b="clock"></span></div>
         </div>
@@ -138,7 +138,12 @@
     panel.querySelectorAll('[data-t]').forEach((el) => { el.textContent = text(el.dataset.t); });
     binds = {};
     panel.querySelectorAll('[data-b]').forEach((el) => { (binds[el.dataset.b] ||= []).push(el); });
-    set('label', ui.label || 'SHIFTWORKS · TOW');
+    set('label', ui.label || 'Shiftworks · Tow');
+    // The card shows the server's logo when one is set, and no icon otherwise.
+    (binds.logo || []).forEach((el) => {
+      if (ui.logo) el.innerHTML = `<img src="${escape(ui.logo)}" alt="">`;
+      else el.remove();
+    });
   }
 
   const set = (name, value) => (binds[name] || []).forEach((el) => { el.textContent = value; });
@@ -235,6 +240,7 @@
 
   // Which step of the job: drive to the vehicle, load it, take it to the yard.
   function stepOf(state) {
+    if (state.returning) return 0;
     if (state.cargo) return state.status === 'winching' || state.status === 'lowering' ? 2 : 3;
     return state.route ? 1 : 0;
   }
@@ -261,8 +267,10 @@
     const call = state.call;
     const route = state.route;
     const step = stepOf(state);
-    const job = step > 0;
-    const timed = !!call && call.remaining != null;
+    // Ending the shift: drive the truck back to the depot. Shown like a job without steps or timer.
+    const returning = !!state.returning;
+    const job = step > 0 || returning;
+    const timed = !returning && !!call && call.remaining != null;
     const late = timed && call.remaining < 60;
     const kind = call ? text('title_' + call.type) : null;
 
@@ -274,13 +282,17 @@
     c.toggle('has-truck', !!state.truck);
     c.toggle('has-open', !!state.open);
     c.toggle('is-late', late);
+    c.toggle('is-return', returning);
     for (let i = 1; i <= 3; i++) c.toggle('step-' + i, step === i);
 
     set('clock', clock(state.onShift || 0));
-    const doing = job ? text('do_' + STEP_KEY[step]) : text('title_idle');
-    const stepName = job ? text('step_' + STEP_KEY[step]) : '';
-    if (layout === 'card') {
-      set('kind', job ? (kind || stepName) : (ui.label || 'SHIFTWORKS · TOW'));
+    const doing = returning ? text('do_return') : job ? text('do_' + STEP_KEY[step]) : text('title_idle');
+    const stepName = returning ? text('title_return') : job ? text('step_' + STEP_KEY[step]) : '';
+    if (returning) {
+      set('kind', text('title_return'));
+      set('title', layout === 'card' ? doing : (route && route.where) || doing);
+    } else if (layout === 'card') {
+      set('kind', job ? (kind || stepName) : (ui.label || 'Shiftworks · Tow'));
       set('title', doing);
     } else if (layout === 'mission') {
       set('kind', job ? [kind, stepName].filter(Boolean).join(' · ') : text('title_idle'));
@@ -291,10 +303,10 @@
     }
 
     const logo = !job && ui.logo ? `<img src="${escape(ui.logo)}" alt="">` : null;
-    setHtml('icon', logo || icon(job ? STEP_ICON[step] : 'radar'));
+    setHtml('icon', logo || icon(returning ? 'truck' : job ? STEP_ICON[step] : 'radar'));
     setHtml('hint', hint(state.open || 0, layout === 'compact'));
 
-    set('whereLabel', text(step === 3 ? 'at_yard' : 'at_pickup'));
+    set('whereLabel', text(returning ? 'at_depot' : step === 3 ? 'at_yard' : 'at_pickup'));
     set('where', route ? route.where || '' : '');
     set('distance', route ? distance(route.metres) : '—');
 

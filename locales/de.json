@@ -14,7 +14,16 @@
     "clock_out": "Schicht beenden",
     "started": "Schicht begonnen. Hol dir einen Wagen am Schalter.",
     "ended": "Schicht beendet.",
-    "wrong_job": "Nur Mitarbeiter des Abschleppdienstes können hier einstempeln."
+    "wrong_job": "Nur Mitarbeiter des Abschleppdienstes können hier einstempeln.",
+    "end": "Schicht beenden",
+    "end_truck": "Bring den Truck zum Depot zurück und gib ihn dort ab.",
+    "end_now": "Du hast keinen Truck draußen, die Schicht endet sofort.",
+    "end_drops_call": "Dein aktueller Auftrag geht zurück in die Liste.",
+    "keep_working": "Weiterarbeiten",
+    "keep_working_hint": "Die Route zum Depot wird entfernt.",
+    "return_route": "Route zum Depot gesetzt. Gib dort den Truck ab, um die Schicht zu beenden.",
+    "return_hint": "[E] Truck abgeben und Schicht beenden",
+    "depot_blip": "Truck-Rückgabe"
   },
   "garage": {
     "title": "Firmenwagen",
@@ -175,6 +184,9 @@
     "title_contract": "Vertrag",
     "title_abandoned": "Verlassen",
     "km": "%s km",
-    "m": "%s m"
+    "m": "%s m",
+    "do_return": "Truck zurückbringen",
+    "title_return": "Schichtende",
+    "at_depot": "Abgeben bei"
   }
 }

@@ -158,6 +158,25 @@ lib.callback.register('sw_tow:server:returnTruck', function(src)
     return true
 end)
 
+---"End shift" from the calls menu: with a truck, once it is back at the truck spot with nothing on
+---it (the truck is handed in); without one, anywhere.
+lib.callback.register('sw_tow:server:endShift', function(src)
+    local current = shifts[src]
+    if not current then return false end
+    if not guard.rate(src, 'clock') then return false, 'common.wait' end
+    local truck = current.truck
+    if truck and DoesEntityExist(truck) then
+        if Entity(truck).state['sw_tow:cargo'] then return false, 'garage.has_cargo' end
+        local at = GetEntityCoords(truck)
+        if #(at - config.garage.spawn.xyz) > config.garage.returnDistance or not guard.near(src, at, 15.0) then
+            return false, 'garage.too_far'
+        end
+    end
+    shift.stop(src, truck and 'ended, truck returned' or 'ended')
+    framework.setDuty(src, false)
+    return true
+end)
+
 framework.onPlayerUnload(function(src) shift.stop(src, 'logged out') end)
 
 framework.onJobUpdate(function(src, job)

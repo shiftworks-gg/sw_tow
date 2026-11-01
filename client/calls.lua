@@ -30,9 +30,18 @@ local typeIcons = {
     abandoned = 'hourglass-half',
 }
 
----What the route blip points at: 'call' (the vehicle to pick up) or 'yard' (where to hand it over).
----@type 'call'|'yard'?
+---What the route blip points at: 'call' (the vehicle to pick up), 'yard' (where to hand it over)
+---or 'depot' (ending the shift: where the truck is handed in).
+---@type 'call'|'yard'|'depot'?
 local routeTarget
+
+---The worker chose "End shift" and is driving the truck back.
+local returning = false
+
+---True while the worker is taking the truck back to end the shift (for the panel).
+function calls.returning()
+    return returning
+end
 
 local function removeBlip()
     if routeBlip and DoesBlipExist(routeBlip) then RemoveBlip(routeBlip) end
@@ -42,6 +51,7 @@ end
 local function clearRoute()
     removeBlip()
     activeCallId, activeCall = nil, nil
+    returning = false
 end
 
 ---@param coords vector3
@@ -149,6 +159,7 @@ end
 ---Once the vehicle is on the truck the route leads to the nearest yard; if it comes off again
 ---before delivery, back to the call.
 local function updateRoute()
+    if returning then return end
     local truck = shift.truck()
     local loaded = truck ~= nil and Entity(truck).state['sw_tow:cargo'] ~= nil
     if truck and loaded and routeTarget ~= 'yard' then
@@ -180,6 +191,7 @@ local function runRoute()
     if routing then return end
     routing = true
     local hinted, nextCheck = false, 0
+    local depotHint, handingIn = false, false
     while shift.onShift() do
         local now = GetGameTimer()
         if now >= nextCheck then
@@ -198,9 +210,30 @@ local function runRoute()
             if inside then lib.showTextUI(locale('tow.yard_hint')) else lib.hideTextUI() end
             hinted = inside
         end
+
+        -- Ending the shift: at the truck spot, [E] hands the truck in.
+        local atDepot = false
+        if returning then
+            local truck = shift.truck()
+            local spawn = config.garage.spawn.xyz
+            atDepot = truck ~= nil and #(GetEntityCoords(truck) - spawn) <= config.garage.returnDistance
+                and #(GetEntityCoords(cache.ped) - GetEntityCoords(truck)) <= 15.0
+            near = near or (truck ~= nil and #(GetEntityCoords(truck) - spawn) < 60.0)
+            if atDepot and not handingIn and IsControlJustReleased(0, 38) then
+                handingIn = true
+                CreateThread(function()
+                    calls.finishShift()
+                    handingIn = false
+                end)
+            end
+        end
+        if atDepot ~= depotHint then
+            if atDepot then lib.showTextUI(locale('shift.return_hint')) else lib.hideTextUI() end
+            depotHint = atDepot
+        end
         Wait(near and 0 or 500)
     end
-    if hinted then lib.hideTextUI() end
+    if hinted or depotHint then lib.hideTextUI() end
     routing = false
 end
 
@@ -246,15 +279,63 @@ function calls.drop(id)
     return ok, errorKey
 end
 
+---Ends the shift on the server: hands in the truck when it is at the depot, or ends at once
+---without one.
+---@return boolean ok
+function calls.finishShift()
+    local ok, errorKey = lib.callback.await('sw_tow:server:endShift', false)
+    if ok then
+        notify(locale('shift.ended'), 'success')
+    else
+        notify(locale(errorKey or 'common.failed'), 'error')
+    end
+    return ok == true
+end
+
+---"End shift" in the calls menu. A truck goes back to the depot first; the panel and a route lead there.
+function calls.endShift()
+    if not shift.onShift() then return end
+    local truck = shift.truck()
+    if truck and Entity(truck).state['sw_tow:cargo'] then
+        return notify(locale('garage.has_cargo'), 'error')
+    end
+    if activeCallId then
+        local ok, errorKey = calls.drop(activeCallId)
+        if not ok then return notify(locale(errorKey or 'common.failed'), 'error') end
+    end
+    if not truck then return calls.finishShift() end
+    clearRoute()
+    returning = true
+    drawRoute(config.garage.spawn.xyz, 67, locale('shift.depot_blip'))
+    routeTarget = 'depot'
+    notify(locale('shift.return_route'), 'inform')
+end
+
+---"Keep working": drops the way back to the depot.
+function calls.cancelEnd()
+    if not returning then return end
+    returning = false
+    removeBlip()
+end
+
+local function endShiftOption()
+    if returning and shift.truck() then
+        return { title = locale('shift.keep_working'), description = locale('shift.keep_working_hint'), icon = 'rotate-left',
+            onSelect = calls.cancelEnd }
+    end
+    local description = locale(shift.truck() and 'shift.end_truck' or 'shift.end_now')
+    if activeCallId then description = description .. ' ' .. locale('shift.end_drops_call') end
+    return { title = locale('shift.end'), description = description, icon = 'right-from-bracket', onSelect = calls.endShift }
+end
+
 local function openList()
     if not shift.onShift() then return end
     local list = calls.list()
-    if #list == 0 then
-        notify(locale('calls.empty'), 'inform')
-        return
-    end
 
     local options = {}
+    if #list == 0 then
+        options[1] = { title = locale('calls.empty'), icon = 'inbox', disabled = true }
+    end
     for _, call in ipairs(list) do
         local coords = vec3(call.coords.x, call.coords.y, call.coords.z)
         local distance = #(GetEntityCoords(cache.ped) - coords) / 1000
@@ -278,6 +359,7 @@ local function openList()
             end,
         }
     end
+    options[#options + 1] = endShiftOption()
     lib.registerContext({ id = 'sw_tow_calls', title = locale('calls.title'), options = options })
     lib.showContext('sw_tow_calls')
 end

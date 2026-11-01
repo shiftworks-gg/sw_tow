@@ -22,7 +22,7 @@ return {
         top = 26,                -- Distance from the top of the screen, in % of its height.
         scale = 1.0,             -- 0.8 to 1.3. Size of the whole panel; it already grows with the screen resolution.
         opacity = nil,           -- 0.6 to 1: how solid the background is. nil = fully solid.
-        label = 'SHIFTWORKS · TOW', -- Small label in the header. Your server name works too.
+        label = 'Shiftworks · Tow', -- Small label at the top while waiting for calls. Your server name works too.
         logo = nil,              -- Optional image in the header: a URL or 'nui://your_resource/logo.png'.
         font = nil,              -- Match your other UIs: { family = 'Poppins', url = 'nui://your_ui/fonts/poppins.woff2' }. nil = the theme's fonts.
         colors = {               -- Optional: any of these overrides the theme. Colours like '#172027'.

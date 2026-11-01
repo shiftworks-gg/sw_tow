@@ -189,3 +189,40 @@ test.case('repeating an action too quickly says to wait, not that something fail
     test.refusedWith('garage.already_out', w:call('sw_tow:server:takeTruck', src, 2))
 end)
 
+
+test.case('end shift without a truck: ends anywhere, off duty', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    w:teleport(src, World.FAR)
+    w:advance(1)
+    test.accepted(w:call('sw_tow:server:endShift', src))
+    test.eq(w.env.Player(src).state['sw_tow:shift'], false, 'shift state bag')
+    test.eq(w.players[src].job.onDuty, false, 'off duty')
+    w:assertNoErrors()
+end)
+
+test.case('end shift with a truck: only at the truck spot, empty, with the worker next to it', function()
+    local w = newWorld()
+    local src = flow.worker(w)
+    local truck = flow.truck(w, src, 1)
+    flow.drive(w, src, truck, World.FAR)
+    w:advance(1)
+    test.refusedWith('garage.too_far', w:call('sw_tow:server:endShift', src))
+
+    flow.drive(w, src, truck, World.TRUCK_SPAWN)
+    w:teleport(src, World.FAR)
+    w:advance(1)
+    test.refusedWith('garage.too_far', w:call('sw_tow:server:endShift', src)) -- the worker walked away from it
+
+    w:teleport(src, World.TRUCK_SPAWN + vector.vec3(3, 0, 0))
+    w.env.Entity(truck).state:set('sw_tow:cargo', 1, true)
+    w:advance(1)
+    test.refusedWith('garage.has_cargo', w:call('sw_tow:server:endShift', src))
+    w.env.Entity(truck).state:set('sw_tow:cargo', nil, true)
+
+    w:advance(1)
+    test.accepted(w:call('sw_tow:server:endShift', src))
+    test.falsy(w:exists(truck), 'truck handed in')
+    test.eq(w.env.Player(src).state['sw_tow:shift'], false, 'shift over')
+    w:assertNoErrors()
+end)

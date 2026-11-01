@@ -93,7 +93,7 @@ Texts live in `locales/en.json`, `de.json`, `ru.json`. The language follows `set
 |---|---|---|
 | `/calltow [note]` | everyone | Call a tow truck for the vehicle you are in or drove last |
 | `/canceltow` | everyone | Cancel your call |
-| `/towcalls` or `F6` | workers on shift | Call list. The key can be changed in GTA settings |
+| `/towcalls` or `F6` | workers on shift | Call list and End shift. The key can be changed in GTA settings |
 | `/swtow_spots generate [cell]` | admins | Scans the map for roadside spots for NPC contracts and saves them to `data/spots.generated.lua`. One spot per cell, 250 m by default (100–1000). Takes a few minutes; stay in game |
 | `/swtow_spots show` / `hide` | admins | Shows every contract spot on the map: blue are bundled, orange generated |
 | `/swtow_coords` | everyone | Prints your position and heading as `vec4(...)` and copies it, for placing things in `config.lua` |
@@ -146,7 +146,7 @@ development server `/swtow_test` plays the main flows in game with your own char
 ## Credits
 
 - Contract spots: from `qbx_towjob` by the Qbox project (GPL-3.0).
-- Fonts: Barlow Condensed, Roboto Condensed and IBM Plex Sans (SIL Open Font License, see `html/fonts`).
+- Font: Inter (SIL Open Font License, see `html/fonts`).
 - Icons: Tabler Icons (MIT).
 
 ## License

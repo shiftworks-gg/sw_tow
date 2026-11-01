@@ -14,7 +14,16 @@
     "clock_out": "Clock out",
     "started": "Shift started. Take a truck at the counter.",
     "ended": "Shift ended.",
-    "wrong_job": "Only tow company employees can clock in here."
+    "wrong_job": "Only tow company employees can clock in here.",
+    "end": "End shift",
+    "end_truck": "Drive the truck back to the depot and hand it in there.",
+    "end_now": "You have no truck out, so the shift ends now.",
+    "end_drops_call": "Your current call goes back to the list.",
+    "keep_working": "Keep working",
+    "keep_working_hint": "The route to the depot is removed.",
+    "return_route": "Route set to the depot. Hand in the truck there to end your shift.",
+    "return_hint": "[E] Hand in the truck and end the shift",
+    "depot_blip": "Truck return"
   },
   "garage": {
     "title": "Company trucks",
@@ -175,6 +184,9 @@
     "title_contract": "Contract",
     "title_abandoned": "Abandoned",
     "km": "%s km",
-    "m": "%s m"
+    "m": "%s m",
+    "do_return": "Return the truck",
+    "title_return": "End of shift",
+    "at_depot": "Hand in at"
   }
 }
