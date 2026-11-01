@@ -44,5 +44,7 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
+    'html/dialog.css',
+    'html/dialog.js',
     'html/fonts/*.woff2',
 }

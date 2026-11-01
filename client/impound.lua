@@ -3,28 +3,62 @@ local config = require 'config'
 local util = require 'shared.util'
 local notify = require 'client.notify'
 local police = require 'client.police'
+local dialog = require 'client.dialog'
 
 local impound = {}
 
-local function vehicleLabel(model)
-    local name = GetDisplayNameFromVehicleModel(joaat(model))
-    local text = GetLabelText(name)
-    return text ~= 'NULL' and text or model
-end
+local vehicleLabel = dialog.vehicleLabel
 
----The player's vehicles in a yard, with their fees. Only works at the yard's counter.
+---The player's vehicles in a yard, with their fees, and the money they can pay with. Only works at
+---the yard's counter.
 ---@param yardKey string
----@return { id: integer, plate: string, model: string, reason: string, fee: integer, held: boolean }[]
+---@return { id: integer, plate: string, model: string, reason: string, note: string?, fee: integer, parts: table, held: boolean, holdLeft: integer?, storedFor: integer }[] list
+---@return { cash: integer, bank: integer } money
 function impound.list(yardKey)
-    return lib.callback.await('sw_tow:server:counterList', false, yardKey) or {}
+    local list, money = lib.callback.await('sw_tow:server:counterList', false, yardKey)
+    return list or {}, money or { cash = 0, bank = 0 }
 end
 
 ---Pays the fee and takes the vehicle out.
 ---@param id integer record id from impound.list
+---@param account? 'cash'|'bank' nil = cash first, then bank
 ---@return boolean ok, string? errorKey
-function impound.release(id)
-    return lib.callback.await('sw_tow:server:release', false, id)
+function impound.release(id, account)
+    return lib.callback.await('sw_tow:server:release', false, id, account)
 end
+
+---The counter window's data for a yard.
+---@param yardKey string
+---@param select? string plate to show first
+---@return table? data nil when none of the player's vehicles are there
+local function counterData(yardKey, select)
+    local list, money = impound.list(yardKey)
+    if #list == 0 then return end
+    local items = {}
+    for i, item in ipairs(list) do
+        items[i] = {
+            id = item.id, plate = item.plate, label = vehicleLabel(item.model), reason = item.reason, note = item.note,
+            fee = item.fee, parts = item.parts, held = item.held, holdLeft = item.holdLeft, storedFor = item.storedFor,
+        }
+    end
+    return { title = config.yards[yardKey].label, items = items, money = money, select = select }
+end
+
+---The yard whose counter window is open.
+---@type string?
+local counterYard
+
+dialog.on('pay', function(body)
+    if not counterYard or not util.isInteger(body.id) then return { close = true } end
+    local ok, errorKey = impound.release(body.id, body.account == 'bank' and 'bank' or 'cash')
+    if ok then
+        notify(locale('impound.released'), 'success')
+        return { close = true }
+    end
+    local data = counterData(counterYard)
+    if not data then return { close = true } end
+    return { error = locale(errorKey or 'common.failed'), data = data }
+end)
 
 ---Releases a vehicle at the counter (the fee is charged) and says how it went.
 ---@param item table an entry of impound.list()
@@ -48,8 +82,15 @@ function impound.confirmRelease(item)
 end
 
 ---@param yardKey string
-function impound.openCounter(yardKey)
+---@param opts? { focus?: boolean, select?: string } the window without the mouse (filming), a plate to show first
+function impound.openCounter(yardKey, opts)
     local yard = config.yards[yardKey]
+    if dialog.enabled() then
+        local data = counterData(yardKey, opts and opts.select)
+        if not data then return notify(locale('impound.nothing_here'), 'inform') end
+        counterYard = yardKey
+        return dialog.open('counter', data, opts)
+    end
     local list = impound.list(yardKey)
     if #list == 0 then
         notify(locale('impound.nothing_here'), 'inform')

@@ -99,6 +99,8 @@ local function usedKeys()
     for _, kind in ipairs({ 'success', 'inform', 'warning', 'error' }) do used['notify.' .. kind] = 'client/notify.lua' end
     local panel = read('client/panel.lua'):match('STRING_KEYS = (%b{})')
     for key in panel:gmatch("'([%w_]+)'") do used['panel.' .. key] = 'client/panel.lua' end
+    local window = read('client/dialog.lua'):match('STRING_KEYS = (%b{})')
+    for key in window:gmatch("'([%w_]+)'") do used['ui.' .. key] = 'client/dialog.lua' end
     return used
 end
 

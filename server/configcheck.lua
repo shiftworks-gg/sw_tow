@@ -97,6 +97,7 @@ function checker.run(cfg)
     if get('ui.accent') ~= 'auto' and not colour(get('ui.accent')) then
         problem('ui.accent', 'must be \'auto\' or a colour like \'#ff7a2e\'')
     end
+    oneOf('ui.menus', { 'shiftworks', 'ox' })
     local colors = get('ui.colors')
     if colors ~= nil and type(colors) ~= 'table' then
         problem('ui.colors', 'must be a table')

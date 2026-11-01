@@ -2,9 +2,14 @@
 local config = require 'config'
 local framework = require 'bridge.loader'
 local notify = require 'client.notify'
+local util = require 'shared.util'
+local dialog = require 'client.dialog'
 
 local police = {}
 local cfg = config.police
+
+---The vehicle the order window is open for, and the yard of the holds window.
+local orderVehicle, holdsYard
 
 ---@return boolean
 function police.isOfficer()
@@ -17,11 +22,39 @@ end
 function police.sendOrder(vehicle, order)
     local ok, errorKey = lib.callback.await('sw_tow:server:policeOrder', false, VehToNet(vehicle), order)
     notify(locale(ok and 'police.ordered' or (errorKey or 'common.failed')), ok and 'success' or 'error')
+    return ok, errorKey
 end
+
+dialog.on('send', function(body)
+    local form = type(body.form) == 'table' and body.form or {}
+    if not orderVehicle or not DoesEntityExist(orderVehicle) then return { close = true } end
+    local ok, errorKey = lib.callback.await('sw_tow:server:policeOrder', false, VehToNet(orderVehicle), {
+        reason = tostring(form.reason or ''),
+        fine = tonumber(form.fine) or 0,
+        hold = form.hold == true,
+        holdHours = tonumber(form.holdHours) or 0,
+    })
+    if not ok then return { error = locale(errorKey or 'common.failed') } end
+    notify(locale('police.ordered'), 'success')
+    return { close = true }
+end)
 
 ---The officer's form; `preset` fills it in (for filming).
 ---@param preset? { reason: string, fine: number, hold: boolean, holdHours: number }
-function police.orderTow(vehicle, preset)
+---@param opts? { focus?: boolean } the window without the mouse (filming)
+function police.orderTow(vehicle, preset, opts)
+    if dialog.enabled() then
+        orderVehicle = vehicle
+        local c = GetEntityCoords(vehicle)
+        return dialog.open('order', {
+            plate = util.trimPlate(GetVehicleNumberPlateText(vehicle)),
+            label = dialog.vehicleLabel(GetEntityModel(vehicle)),
+            street = GetStreetNameFromHashKey((GetStreetNameAtCoord(c.x, c.y, c.z))),
+            maxFine = cfg.maxFine,
+            maxHoldHours = cfg.maxHoldHours,
+            preset = preset,
+        }, opts)
+    end
     local input = lib.inputDialog(locale('police.form_title'), {
         { type = 'input', label = locale('police.reason'), required = true, max = 120, default = preset and preset.reason },
         { type = 'number', label = locale('police.fine'), min = 0, max = cfg.maxFine, default = preset and preset.fine or 0 },
@@ -45,8 +78,39 @@ function police.liftHold(id)
     notify(locale(ok and 'police.lifted' or (errorKey or 'common.failed')), ok and 'success' or 'error')
 end
 
+---The holds window's data for a yard, nil when nothing is held there.
+local function holdsData(yardKey)
+    local list = lib.callback.await('sw_tow:server:holdList', false, yardKey)
+    if not list or #list == 0 then return end
+    local items = {}
+    for i, item in ipairs(list) do
+        items[i] = {
+            id = item.id, plate = item.plate, label = dialog.vehicleLabel(item.model), note = item.note,
+            fine = item.fine or 0, holdLeft = item.holdLeft, storedFor = item.storedFor or 0,
+        }
+    end
+    return { title = locale('police.holds_title'), items = items }
+end
+
+dialog.on('lift', function(body)
+    if not holdsYard or not util.isInteger(body.id) then return { close = true } end
+    local ok, errorKey = lib.callback.await('sw_tow:server:liftHold', false, body.id)
+    if not ok then return { error = locale(errorKey or 'common.failed') } end
+    notify(locale('police.lifted'), 'success')
+    local data = holdsData(holdsYard)
+    if not data then return { close = true } end
+    return { data = data }
+end)
+
 ---@param yardKey string
-function police.openHolds(yardKey)
+---@param opts? { focus?: boolean } the window without the mouse (filming)
+function police.openHolds(yardKey, opts)
+    if dialog.enabled() then
+        local data = holdsData(yardKey)
+        if not data then return notify(locale('police.no_holds'), 'inform') end
+        holdsYard = yardKey
+        return dialog.open('holds', data, opts)
+    end
     local list = lib.callback.await('sw_tow:server:holdList', false, yardKey)
     if not list or #list == 0 then
         notify(locale('police.no_holds'), 'inform')

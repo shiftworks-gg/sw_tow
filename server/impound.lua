@@ -33,15 +33,31 @@ local function isHeld(vehicleId)
     return yard and config.yards[yard] and config.yards[yard].label or nil
 end
 
+---What a release costs, line by line, as the counter shows it.
+---@param record SwImpoundRecord
+---@param class integer?
+---@return { base: integer, class: integer, days: integer, storage: integer, fine: integer, tow: integer, total: integer }
+function impound.feeParts(record, class)
+    local fees = config.fees
+    local hours = (os.time() - record.stored_at) / 3600
+    local days = math.ceil(math.max(0, hours - fees.freeHours) / 24)
+    local parts = {
+        base = math.floor(fees.base),
+        class = math.floor(class and fees.byClass[class] or 0),
+        days = days,
+        storage = math.floor(days * fees.perDay),
+        fine = math.floor(record.fine or 0),
+        tow = math.floor(record.tow_charge or 0),
+    }
+    parts.total = parts.base + parts.class + parts.storage + parts.fine + parts.tow
+    return parts
+end
+
 ---@param record SwImpoundRecord
 ---@param class integer?
 ---@return integer
 function impound.fee(record, class)
-    local fees = config.fees
-    local hours = (os.time() - record.stored_at) / 3600
-    local days = math.ceil(math.max(0, hours - fees.freeHours) / 24)
-    local classFee = class and fees.byClass[class] or 0
-    return math.floor(fees.base + classFee + days * fees.perDay + (record.fine or 0) + (record.tow_charge or 0))
+    return impound.feeParts(record, class).total
 end
 
 ---@param record SwImpoundRecord
@@ -53,10 +69,11 @@ end
 ---@param src integer
 ---@param amount integer
 ---@param reason string
+---@param only? 'cash'|'bank' the account the player chose; nil = cash first, then bank
 ---@return string? account
-local function charge(src, amount, reason)
+local function charge(src, amount, reason, only)
     if amount <= 0 then return 'cash' end
-    for _, account in ipairs({ 'cash', 'bank' }) do
+    for _, account in ipairs(only and { only } or { 'cash', 'bank' }) do
         if framework.getMoney(src, account) >= amount and framework.removeMoney(src, account, amount, reason) then
             return account
         end
@@ -228,22 +245,31 @@ lib.callback.register('sw_tow:server:counterList', function(src, yardKey)
     if not yard or not citizenid or not guard.near(src, counterCoords(yard), 4.0) then return {} end
 
     local list = {}
+    local now = os.time()
     for _, record in ipairs(storage.activeForOwner(citizenid, yardKey)) do
+        local parts = impound.feeParts(record, framework.getVehicleClass(joaat(record.model)))
+        local held = holdActive(record)
         list[#list + 1] = {
             id = record.id,
             plate = record.plate,
             model = record.model,
             reason = record.reason,
-            fee = impound.fee(record, framework.getVehicleClass(joaat(record.model))),
-            held = holdActive(record),
-            storedAt = record.stored_at,
+            note = record.note,
+            fee = parts.total,
+            parts = parts,
+            held = held,
+            -- Seconds until a timed hold ends; nil while held until an officer lifts it.
+            holdLeft = held and record.hold_until and record.hold_until - now or nil,
+            storedFor = now - record.stored_at,
         }
     end
-    return list
+    -- What the owner can pay with, for the counter's payment choice.
+    return list, { cash = framework.getMoney(src, 'cash'), bank = framework.getMoney(src, 'bank') }
 end)
 
-lib.callback.register('sw_tow:server:release', function(src, recordId)
+lib.callback.register('sw_tow:server:release', function(src, recordId, account)
     if not util.isInteger(recordId) then return false end
+    if account ~= nil and account ~= 'cash' and account ~= 'bank' then return false end
     if releasing[recordId] or not guard.rate(src, 'release') then return false, 'common.wait' end
     releasing[recordId] = true
     local releaseSpot
@@ -262,7 +288,7 @@ lib.callback.register('sw_tow:server:release', function(src, recordId)
         if not spot then return false, 'impound.no_spot' end
 
         local fee = impound.fee(record, framework.getVehicleClass(joaat(record.model)))
-        local paidFrom = charge(src, fee, 'sw-tow-release')
+        local paidFrom = charge(src, fee, 'sw-tow-release', account)
         if not paidFrom then return false, 'impound.not_enough' end
 
         local refund = function() if fee > 0 then framework.addMoney(src, paidFrom, fee, 'sw-tow-release-refund') end end

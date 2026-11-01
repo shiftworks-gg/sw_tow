@@ -29,6 +29,11 @@ First release.
 - Your own HUD instead: `ui.enabled = false` and `exports.sw_tow:GetShiftState()` on the client.
 - Menus, dialogs and notifications are your server's ox_lib as it is. `notify.custom` sends notifications to any other script; `notify.style = 'shiftworks'` gives the dark Shiftworks look.
 
+**Counter and police window** (`ui.menus`)
+- Impound counter: every vehicle of yours in the yard, the fee line by line (release, class, storage days, fine, tow), cash or bank, a held vehicle with the time left on its hold.
+- Officers: the tow order as a form (reason, fine with quick picks, hold and how long) and the holds at the counter with one button to lift each.
+- `ui.menus = 'ox'` keeps your server's ox_lib menus and dialogs instead.
+
 **Server owners**
 - Every action is checked on the server: shift, truck, distance, rate and trip time. Refused actions are logged with the reason, never punished. A tow called on your own car never makes money.
 - `swtow_selftest` checks the installation: jobs, garage, keys and banking scripts and their accounts, database tables and a round trip, clocks, texts, contract spots.

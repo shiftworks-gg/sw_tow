@@ -4,6 +4,7 @@ local config = require 'config'
 local util = require 'shared.util'
 local shift = require 'client.shift'
 local calls = require 'client.calls'
+local dialog = require 'client.dialog'
 
 local ui = config.ui
 local visible = false
@@ -31,9 +32,12 @@ end
 local function init()
     local strings = {}
     for _, key in ipairs(STRING_KEYS) do strings[key] = locale('panel.' .. key) end
+    local dialogStrings = {}
+    for _, key in ipairs(dialog.STRING_KEYS) do dialogStrings[key] = locale('ui.' .. key) end
     SendNUIMessage({
         type = 'init',
         strings = strings,
+        dialogStrings = dialogStrings,
         ui = {
             theme = ui.theme,
             accent = ui.accent,
@@ -186,8 +190,9 @@ end)
 -- The page tells us when it has loaded; messages sent before that would be lost.
 RegisterNUICallback('ready', function(_, respond)
     respond(true)
-    if not ui.enabled then return end
+    -- The window (counter, holds, order) needs the strings and colours even without the panel.
     init()
+    if not ui.enabled then return end
     visible = false
     if shift.onShift() then shiftStarted = shiftStarted or GetGameTimer() end
     show(shift.onShift())

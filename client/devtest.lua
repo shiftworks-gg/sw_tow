@@ -29,6 +29,7 @@ local calls = require 'client.calls'
 local impound = require 'client.impound'
 local panel = require 'client.panel'
 local police = require 'client.police'
+local dialog = require 'client.dialog'
 
 local FLATBED, HOOK
 for index, option in ipairs(config.garage.vehicles) do
@@ -1074,9 +1075,9 @@ end
 
 ---Shows the counter's list of impounded vehicles.
 function film.counterMenu(seconds)
-    impound.openCounter(YARD_KEY)
+    impound.openCounter(YARD_KEY, { focus = false })
     Wait(seconds * 1000)
-    lib.hideContext()
+    if dialog.enabled() then dialog.close() else lib.hideContext() end
     return true
 end
 
@@ -1087,6 +1088,15 @@ function film.payFee(plate, seconds)
         if entry.plate == plate then item = entry end
     end
     if not item then return false end
+    if dialog.enabled() then
+        impound.openCounter(YARD_KEY, { focus = false, select = plate })
+        Wait(seconds * 1000)
+        dialog.press('pay')
+        Wait(300)
+        dialog.close()
+        impound.releaseItem(item)
+        return true
+    end
     CreateThread(function() impound.confirmRelease(item) end)
     Wait(seconds * 1000)
     lib.closeAlertDialog()
@@ -1098,6 +1108,15 @@ end
 ---The officer's tow order form, filled in, then sent.
 function film.policeForm(vehicle, seconds)
     local order = { reason = 'Parked on the pavement, blocking a hydrant', fine = 500, hold = true, holdHours = 24 }
+    if dialog.enabled() then
+        police.orderTow(vehicle, order, { focus = false })
+        Wait(seconds * 1000)
+        dialog.press('send')
+        Wait(300)
+        dialog.close()
+        police.sendOrder(vehicle, order)
+        return true
+    end
     CreateThread(function() police.orderTow(vehicle, order) end)
     Wait(seconds * 1000)
     lib.closeInputDialog()
@@ -1108,9 +1127,15 @@ end
 
 ---The officer's list of holds at the counter, then the first is lifted.
 function film.holdsMenu(seconds)
-    police.openHolds(YARD_KEY)
+    police.openHolds(YARD_KEY, { focus = false })
     Wait(seconds * 1000)
-    lib.hideContext()
+    if dialog.enabled() then
+        dialog.press('lift')
+        Wait(300)
+        dialog.close()
+    else
+        lib.hideContext()
+    end
     local list = lib.callback.await('sw_tow:server:holdList', false, YARD_KEY)
     if not list or not list[1] then return false end
     police.liftHold(list[1].id)

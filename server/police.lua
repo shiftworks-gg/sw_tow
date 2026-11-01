@@ -79,7 +79,11 @@ lib.callback.register('sw_tow:server:holdList', function(src, yardKey)
             plate = record.plate,
             model = record.model,
             note = record.note,
+            fine = record.fine or 0,
             holdUntil = record.hold_until and os.date('%d.%m %H:%M', record.hold_until) or nil,
+            -- Seconds left on a timed hold, and how long the vehicle has been in the yard.
+            holdLeft = record.hold_until and record.hold_until - os.time() or nil,
+            storedFor = os.time() - record.stored_at,
         }
     end
     return list
