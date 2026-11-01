@@ -121,19 +121,28 @@ end)
 
 ---A vehicle owned by the tester, registered in the garage script like a bought car.
 ---@param plate? string a fixed plate instead of a test plate
-register('ownedVehicle', function(src, model, coords, plate)
+---@param colors? integer[] { primary, secondary, pearl, wheels } saved with the vehicle, so it comes out
+---of the impound in the same paint (the release spawns it from the saved properties)
+register('ownedVehicle', function(src, model, coords, plate, colors)
     local citizenid = framework.getCitizenId(src)
     plate = plate and fixedPlate(src, plate) or testPlate()
+    local props = { plate = plate }
+    if type(colors) == 'table' and colors[1] then
+        props.color1 = colors[1]
+        props.color2 = colors[2] or colors[1]
+        props.pearlescentColor = colors[3] or 0
+        props.wheelColor = colors[4] or 0
+    end
     local vehicleId
     if integrations.names.garage == 'qbx_garages' then
         local err
-        vehicleId, err = exports.qbx_vehicles:CreatePlayerVehicle({ model = model, citizenid = citizenid, props = { plate = plate } })
+        vehicleId, err = exports.qbx_vehicles:CreatePlayerVehicle({ model = model, citizenid = citizenid, props = props })
         if not vehicleId then error('CreatePlayerVehicle: ' .. json.encode(err)) end
     elseif integrations.names.garage == 'qb-garages' then
         vehicleId = MySQL.insert.await(
             'INSERT INTO player_vehicles (license, citizenid, vehicle, hash, mods, plate, garage, state) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
             { GetPlayerIdentifierByType(src, 'license'), citizenid, model, joaat(model),
-                json.encode({ model = joaat(model), plate = plate }), plate, 'pillboxgarage' })
+                json.encode(lib.table.merge({ model = joaat(model) }, props)), plate, 'pillboxgarage' })
     else
         error('no garage script: owned vehicles need qbx_garages or qb-garages')
     end

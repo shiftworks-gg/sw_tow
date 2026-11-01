@@ -169,8 +169,8 @@ end
 ---A test vehicle owned by you, as if bought.
 ---@param fixed? string a fixed plate (filming), else a test plate
 ---@return integer? vehicle, integer? vehicleId, string? plate
-local function spawnOwned(model, at, fixed)
-    local netId, vehicleId, plate = lib.callback.await('sw_tow:dev:ownedVehicle', false, model, vec4Table(at), fixed)
+local function spawnOwned(model, at, fixed, colors)
+    local netId, vehicleId, plate = lib.callback.await('sw_tow:dev:ownedVehicle', false, model, vec4Table(at), fixed, colors)
     if not netId then return nil, nil, vehicleId end
     local vehicle = fromNet(netId)
     if vehicle then moveVehicle(vehicle, at.xyz, at.w) end
@@ -341,7 +341,7 @@ end
 local function ownedCarToYard(withCall, look)
     local truck = truckOnSite(FLATBED)
     local model = look and look.model or 'sultan'
-    local car, vehicleId, plate = spawnOwned(model, behind(truck, model, 3.5), look and look.plate)
+    local car, vehicleId, plate = spawnOwned(model, behind(truck, model, 3.5), look and look.plate, look and look.colors)
     expect(car, 'an owned test car is spawned', plate)
     ---@cast car integer
     paint(car, look)
@@ -944,7 +944,7 @@ end
 function film.vehicle(model, at, owned, look)
     local plate = look and look.plate
     local vehicle
-    if owned then vehicle = spawnOwned(model, at, plate) else vehicle = spawnVehicle(model, at, nil, plate) end
+    if owned then vehicle = spawnOwned(model, at, plate, look and look.colors) else vehicle = spawnVehicle(model, at, nil, plate) end
     if vehicle then paint(vehicle, look) end
     return vehicle
 end
