@@ -12,7 +12,8 @@ First release.
 - End shift from the call list (`F6`): a route leads back to the depot, `E` at the truck spot hands the truck in and ends the shift. Without a truck the route leads to the office counter.
 - Pay is collected at the office by default (`payout.collect`): it adds up during the shift and is paid when the shift ends there. Nothing is lost on a disconnect; it is paid at the next clock in.
 - Truck deposit (`garage.deposit`, $500): paid back when the truck is handed in, less damage (`garage.damageFromDeposit`). A truck left somewhere or wrecked keeps it; a wrecked one can be replaced at the counter. A truck removed by the game or another script in working order gives it back.
-- Several truck spots (`garage.spawns`): each truck goes to the first clear one. Workers asking at the same moment never get the same spot; the release spots at the yard work the same way.
+- Six truck spots at Hayes Depot (`garage.spawns`): each truck goes to the first clear one. Workers asking at the same moment never get the same spot; the release spots at the yard work the same way.
+- Your own truck among identical company trucks: an arrow above it until you first get in, and a map blip that follows it.
 - A second worker in the truck gets 50% of the delivery pay on top.
 - Sounds for ramps, winch motor, straps and tow arm, from the game's own audio, heard by everyone nearby (`config.sounds`, `/swtow_sounds` to pick by ear).
 

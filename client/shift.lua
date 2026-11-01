@@ -23,6 +23,56 @@ function shift.truck()
     return truck
 end
 
+local truckBlip
+
+local function removeTruckBlip()
+    if truckBlip and DoesBlipExist(truckBlip) then RemoveBlip(truckBlip) end
+    truckBlip = nil
+end
+
+---The worker's own truck among identical company trucks: a map blip that follows it (hidden while
+---driving it), and an arrow above it until the worker first gets in. Runs while that truck is out.
+local function markTruck()
+    local myNet = truckNet
+    CreateThread(function()
+        local entered = false
+        while truckNet and truckNet == myNet do
+            local sleep = 1000
+            local truck = shift.truck()
+            if truck then
+                local c = GetEntityCoords(truck)
+                local inside = cache.vehicle == truck
+                entered = entered or inside
+                if not truckBlip then
+                    truckBlip = AddBlipForCoord(c.x, c.y, c.z)
+                    SetBlipSprite(truckBlip, 68)
+                    SetBlipColour(truckBlip, 5)
+                    SetBlipScale(truckBlip, 0.85)
+                    SetBlipAsShortRange(truckBlip, false)
+                    BeginTextCommandSetBlipName('STRING')
+                    AddTextComponentSubstringPlayerName(locale('garage.your_truck'))
+                    EndTextCommandSetBlipName(truckBlip)
+                end
+                SetBlipCoords(truckBlip, c.x, c.y, c.z)
+                SetBlipAlpha(truckBlip, inside and 0 or 255)
+                if not entered and #(GetEntityCoords(cache.ped) - c) < 80.0 then
+                    local _, top = GetModelDimensions(GetEntityModel(truck))
+                    -- An arrow pointing down at the roof, bobbing and turning to face the camera. No texture
+                    -- (nil, which the natives' typings do not allow for).
+                    ---@diagnostic disable: param-type-mismatch
+                    DrawMarker(2, c.x, c.y, c.z + top.z + 1.2, 0.0, 0.0, 0.0, 180.0, 0.0, 0.0, 0.9, 0.9, 0.9,
+                        255, 122, 46, 220, true, true, 2, false, nil, nil, false)
+                    ---@diagnostic enable: param-type-mismatch
+                    sleep = 0
+                end
+            end
+            -- A truck far away is not on this client: the blip stays where it was last seen.
+            Wait(sleep)
+        end
+        removeTruckBlip()
+    end)
+end
+
 ---True while the worker has a company truck out, wherever it is (also when it is not near enough
 ---to exist on this client).
 ---@return boolean
@@ -62,6 +112,7 @@ function shift.takeTruck(index, replace)
     local ok, netIdOrError = lib.callback.await('sw_tow:server:takeTruck', false, index, replace == true)
     if not ok then return false, netIdOrError end
     truckNet = netIdOrError
+    markTruck()
     return true
 end
 

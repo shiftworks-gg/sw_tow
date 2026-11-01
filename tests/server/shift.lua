@@ -45,8 +45,10 @@ test.case('a company truck has a plate with the prefix, company state bags and k
     w:assertNoErrors()
 end)
 
+local function oneSpot(config) config.garage.spawns = { config.garage.spawns[1] } end
+
 test.case('one truck per worker, and not while the spawn spot is taken', function()
-    local w = newWorld()
+    local w = newWorld({ config = oneSpot })
     local src = flow.worker(w)
     flow.truck(w, src, 1)
     w:advance(6)
@@ -56,7 +58,7 @@ test.case('one truck per worker, and not while the spawn spot is taken', functio
     test.refusedWith('garage.spot_busy', w:call('sw_tow:server:takeTruck', other, 1))
 
     -- A player sitting in a car on the spot blocks it too.
-    local w2 = newWorld()
+    local w2 = newWorld({ config = oneSpot })
     local worker = flow.worker(w2)
     local car = w2:createVehicle({ model = 'asea', coords = World.TRUCK_SPAWN })
     local sitter = w2:addPlayer({})

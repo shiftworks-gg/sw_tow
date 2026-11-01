@@ -34,12 +34,12 @@
     "title": "Firmenwagen",
     "take": "Wagen nehmen",
     "return": "Wagen zurückgeben",
-    "taken": "%s steht draußen bereit.",
+    "taken": "%s steht draußen bereit. Achte auf den Pfeil darüber, er ist auch auf deiner Karte.",
     "returned": "Wagen zurückgegeben.",
     "flatbed_hint": "Seilwinde, ein Fahrzeug auf der Ladefläche",
     "hook_hint": "Abschleppkran, zieht ein Fahrzeug hinterher",
     "already_out": "Du hast schon einen Wagen draußen.",
-    "spot_busy": "Der Stellplatz ist blockiert. Mach ihn zuerst frei.",
+    "spot_busy": "Alle Truck-Stellplätze sind belegt. Warte, bis einer frei wird, oder fahr ein Fahrzeug weg.",
     "too_far": "Bring den Wagen zuerst zurück auf den Hof.",
     "has_cargo": "Lade zuerst das Fahrzeug ab.",
     "lost": "Dein Firmenwagen ist weg. Hol dir am Schalter einen neuen.",
@@ -50,7 +50,8 @@
     "no_deposit": "Nicht genug Geld für die Truck-Kaution.",
     "deposit_hint": "Kaution %s",
     "replace": "Neuen Truck nehmen",
-    "replace_hint": "Dein aktueller Truck bleibt, wo er ist. Seine Kaution ist verloren."
+    "replace_hint": "Dein aktueller Truck bleibt, wo er ist. Seine Kaution ist verloren.",
+    "your_truck": "Dein Abschleppwagen"
   },
   "tow": {
     "winch": "Windenseil einhaken",

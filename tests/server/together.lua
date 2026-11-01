@@ -42,7 +42,10 @@ test.case('three workers take a truck at the same moment: three trucks on three 
 end)
 
 test.case('more workers than spots: the last one is told the spots are taken and pays nothing', function()
-    local w = newWorld({ config = function(config) config.garage.deposit = 500 end })
+    local w = newWorld({ config = function(config)
+        config.garage.spawns = { config.garage.spawns[1] }
+        config.garage.deposit = 500
+    end })
     w.spawnDelay = 500
     local a = flow.worker(w, { bank = 1000 })
     local b = flow.worker(w, { bank = 1000 })

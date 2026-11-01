@@ -54,7 +54,12 @@ return {
     garage = {
         spawns = {                                          -- Truck spots: a truck appears on the first one that is clear
             vec4(489.65, -1331.82, 29.33, 306.5),           -- (no vehicle, nobody standing on it). One spot per worker who
-        },                                                  -- may take a truck at the same moment; add more for busy servers.
+            vec4(479.23, -1333.37, 29.31, 225.7),           -- may take a truck at the same moment; add more for busy servers.
+            vec4(491.32, -1348.07, 29.36, 358.7),
+            vec4(515.59, -1330.25, 29.32, 217.7),
+            vec4(497.24, -1302.21, 29.35, 213.0),
+            vec4(487.03, -1307.78, 29.36, 226.0),
+        },
         returnDistance = 20.0,                              -- A truck can be handed back this close to any truck spot.
         deposit = 500,                                      -- $ taken when a truck goes out, paid back when it is handed in. 0 = no deposit.
         damageFromDeposit = true,                           -- Damage on the returned truck comes off the deposit (a wreck keeps it all).

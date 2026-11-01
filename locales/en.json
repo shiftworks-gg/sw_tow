@@ -34,12 +34,12 @@
     "title": "Company trucks",
     "take": "Take a truck",
     "return": "Return the truck",
-    "taken": "%s is waiting outside.",
+    "taken": "%s is waiting outside. Look for the arrow above it; it is also on your map.",
     "returned": "Truck returned.",
     "flatbed_hint": "Winch, carries one vehicle on the bed",
     "hook_hint": "Tow arm, tows one vehicle behind",
     "already_out": "You already have a truck out.",
-    "spot_busy": "The truck spot is blocked. Clear it first.",
+    "spot_busy": "All truck spots are taken. Wait until one is free or move a vehicle off a spot.",
     "too_far": "Bring the truck back to the yard first.",
     "has_cargo": "Unload the vehicle first.",
     "lost": "Your company truck is gone. Take a new one at the counter.",
@@ -50,7 +50,8 @@
     "no_deposit": "Not enough money for the truck deposit.",
     "deposit_hint": "Deposit %s",
     "replace": "Take a new truck",
-    "replace_hint": "Your current truck stays where it is. Its deposit is kept."
+    "replace_hint": "Your current truck stays where it is. Its deposit is kept.",
+    "your_truck": "Your tow truck"
   },
   "tow": {
     "winch": "Hook the winch cable",
