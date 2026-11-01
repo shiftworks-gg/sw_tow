@@ -176,15 +176,20 @@ end
 function shift.createOffice()
     local office = config.office
     local options = officeOptions()
-    createClerk(office, options)
-    exports.ox_target:addBoxZone({
-        name = 'sw_tow_office',
-        coords = office.coords.xyz,
-        size = office.size,
-        rotation = office.coords.w,
-        debug = config.debug,
-        options = options,
-    })
+    -- With a clerk the options live on the clerk only: a box around the same spot would list
+    -- every option twice in ox_target.
+    if office.ped then
+        createClerk(office, options)
+    else
+        exports.ox_target:addBoxZone({
+            name = 'sw_tow_office',
+            coords = office.coords.xyz,
+            size = office.size,
+            rotation = office.coords.w,
+            debug = config.debug,
+            options = options,
+        })
+    end
     impound.addBlip(office.coords.xyz, office.blip, office.label)
 end
 

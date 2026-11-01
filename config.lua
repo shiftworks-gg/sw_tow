@@ -43,9 +43,10 @@ return {
     office = {
         label = 'Shiftworks Towing',                        -- Name on the map and in menus.
         coords = vec4(472.18, -1310.78, 29.22, 218.2),      -- Counter where workers clock in and take trucks.
-        size = vec3(2.0, 2.0, 2.5),                         -- Size of the counter interaction box.
+        size = vec3(2.0, 2.0, 2.5),                         -- Size of the counter interaction box (used when ped = nil).
         blip = { enabled = true, sprite = 68, color = 47, scale = 0.7 },
-        -- Clerk at the counter, so players can find it; aiming at the clerk offers the counter's options.
+        -- Clerk at the counter, so players can find it; aiming at the clerk offers the counter's options
+        -- (instead of the box above).
         -- Stands at office.coords unless you add coords = vec4(...) here. nil = no clerk.
         ped = { model = 's_m_m_autoshop_01', scenario = 'WORLD_HUMAN_CLIPBOARD' },
     },

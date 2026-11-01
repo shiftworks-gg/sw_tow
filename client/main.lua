@@ -15,5 +15,5 @@ impound.createCounters()
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= cache.resource then return end
-    exports.ox_target:removeZone('sw_tow_office')
+    exports.ox_target:removeZone('sw_tow_office', true)
 end)
