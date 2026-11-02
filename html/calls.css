@@ -34,9 +34,10 @@
               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .cl__side { display: flex; flex-direction: column; align-items: flex-end; gap: calc(6 * var(--u)); text-align: right; }
-/* The kind of call is a coloured word, no icon. */
+/* The kind of call is a coloured word, no icon. Fixed colours, not the accent: with a blue ox_lib
+   accent contracts would look like police orders. */
 .cl__kind { font: 600 calc(13 * var(--u))/1.3 var(--font-ui); white-space: nowrap; }
-.cl__kind.t-contract { color: var(--accent-text); }
+.cl__kind.t-contract { color: #ffa94d; }
 .cl__kind.t-police { color: #4dabf7; }
 .cl__kind.t-player { color: var(--success); }
 .cl__kind.t-abandoned { color: var(--ink-muted); }
