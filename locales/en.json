@@ -255,6 +255,14 @@
     "until_lifted": "Until lifted",
     "send": "Send the order",
     "sending": "Sending…",
-    "vehicle": "Vehicle"
+    "vehicle": "Vehicle",
+    "deposit": "Deposit",
+    "deposit_back": "Paid back when you hand the truck in at the depot.",
+    "deposit_back_damage": "Paid back when you hand the truck in at the depot. Damage comes off it.",
+    "replace_title": "Instead of your current truck",
+    "take_truck": "Take the truck",
+    "take_truck_for": "Take the truck · %s deposit",
+    "taking": "Getting the truck ready…",
+    "take_short": "take"
   }
 }

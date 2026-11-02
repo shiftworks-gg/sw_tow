@@ -5,6 +5,7 @@ local framework = require 'bridge.loader'
 local util = require 'shared.util'
 local notify = require 'client.notify'
 local impound = require 'client.impound'
+local dialog = require 'client.dialog'
 
 local shift = {}
 local truckNet
@@ -123,8 +124,46 @@ function shift.returnTruck()
     return ok, errorKey
 end
 
+---The truck window was opened to replace a truck that is not coming back.
+local replacing = false
+
+---What the truck window shows: the trucks, the deposit and, when replacing, what happens to the old one.
+---@param replace boolean
+local function truckData(replace)
+    local items = {}
+    for index, option in ipairs(config.garage.vehicles) do
+        items[#items + 1] = {
+            index = index,
+            label = option.label,
+            hint = locale(option.method == 'flatbed' and 'garage.flatbed_hint' or 'garage.hook_hint'),
+        }
+    end
+    return {
+        title = locale('garage.title'),
+        items = items,
+        deposit = config.garage.deposit or 0,
+        damage = config.garage.damageFromDeposit == true,
+        replace = replace,
+        replaceHint = replace and locale('garage.replace_hint') or nil,
+    }
+end
+
+dialog.on('take', function(body)
+    local index = body.index
+    local option = dialog.current() == 'trucks' and util.isInteger(index) and config.garage.vehicles[index]
+    if not option then return { close = true } end
+    local ok, errorKey = shift.takeTruck(index, replacing)
+    if not ok then return { error = locale(errorKey or 'common.failed') } end
+    notify(locale('garage.taken', option.label), 'success')
+    return { close = true }
+end)
+
 ---@param replace? boolean
 local function takeTruckMenu(replace)
+    if dialog.enabled() then
+        replacing = replace == true
+        return dialog.open('trucks', truckData(replacing))
+    end
     local options = {}
     local deposit = config.garage.deposit or 0
     for index, option in ipairs(config.garage.vehicles) do
@@ -181,6 +220,8 @@ local function officeOptions()
                 return shift.onShift() and shift.hasTruck() and not nearSpot
             end,
             onSelect = function()
+                -- The Shiftworks window says what happens to the old truck itself.
+                if dialog.enabled() then return takeTruckMenu(true) end
                 local ok = lib.alertDialog({
                     header = locale('garage.replace'),
                     content = locale('garage.replace_hint'),

@@ -255,6 +255,14 @@
     "until_lifted": "Bis zur Aufhebung",
     "send": "Auftrag senden",
     "sending": "Wird gesendet…",
-    "vehicle": "Fahrzeug"
+    "vehicle": "Fahrzeug",
+    "deposit": "Kaution",
+    "deposit_back": "Du bekommst sie zurück, wenn du den Truck im Depot abgibst.",
+    "deposit_back_damage": "Du bekommst sie zurück, wenn du den Truck im Depot abgibst. Schäden werden abgezogen.",
+    "replace_title": "Statt deines aktuellen Trucks",
+    "take_truck": "Truck nehmen",
+    "take_truck_for": "Truck nehmen · %s Kaution",
+    "taking": "Truck wird bereitgestellt…",
+    "take_short": "nehmen"
   }
 }

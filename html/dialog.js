@@ -174,12 +174,37 @@
     return shell(left, right);
   }
 
+  // Company trucks (office) ---------------------------------------------------------------------------
+
+  function trucks() {
+    const item = data.items[selected];
+    const left = `<div class="dlg__left"><div class="lbl">${esc(data.title)}</div>
+      ${data.items.map((it, i) => `<button class="dlg__opt ${i === selected ? 'is-on' : ''}" data-pick="${i}">
+        <div><b>${esc(it.label)}</b><small>${esc(it.hint)}</small></div></button>`).join('')}
+    </div>`;
+    const deposit = data.deposit > 0
+      ? `<div class="dlg__rows"><div class="dlg__row"><span>${esc(t('deposit'))}</span><i></i><b>${money(data.deposit)}</b></div>
+          <p class="dlg__note">${esc(t(data.damage ? 'deposit_back_damage' : 'deposit_back'))}</p></div>`
+      : '';
+    const warn = data.replace ? `<div class="dlg__warn"><b>${esc(t('replace_title'))}</b><span>${esc(data.replaceHint)}</span></div>` : '';
+    const button = data.deposit > 0 ? t('take_truck_for', money(data.deposit)) : t('take_truck');
+    const right = `${header('', item.label)}
+      <p class="dlg__lead">${esc(item.hint)}</p>
+      ${deposit}${warn}
+      <div class="dlg__error">${esc(error)}</div>
+      <button class="dlg__btn" data-act="take" ${busy ? 'disabled' : ''}>${esc(busy ? t('taking') : button)}</button>
+      <div class="dlg__keys"><kbd>Esc</kbd>${esc(t('close'))}<span style="flex:1"></span><kbd>Enter</kbd>${esc(t('take_short'))}</div>`;
+    return `<div class="dlg__dim"></div><div class="dlg__win is-narrow" role="dialog">${left}<div class="dlg__right">${right}</div></div>`;
+  }
+
   // Rendering and input ----------------------------------------------------------------------------
 
   function render() {
     if (!kind) return;
     const focused = document.activeElement && document.activeElement.id;
-    root.innerHTML = kind === 'counter' ? counter() : kind === 'holds' ? holds() : order();
+    const view = { counter, holds, order, trucks }[kind];
+    if (!view) return;
+    root.innerHTML = view();
     root.hidden = false;
     if (focused) {
       const el = document.getElementById(focused);
@@ -200,6 +225,8 @@
       body = { action: 'pay', id: item.id, account: use };
     } else if (action === 'lift') {
       body = { action: 'lift', id: data.items[selected].id };
+    } else if (action === 'take') {
+      body = { action: 'take', index: data.items[selected].index };
     } else if (action === 'send') {
       if (!form.reason.trim()) { error = t('reason_needed'); return render(); }
       body = { action: 'send', form: { reason: form.reason.trim(), fine: form.fine, hold: form.hold, holdHours: form.hold ? form.holdHours : 0 } };
@@ -240,7 +267,7 @@
     const typing = e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT');
     if (e.key === 'Enter' && !typing) {
       e.preventDefault();
-      act(kind === 'counter' ? 'pay' : kind === 'holds' ? 'lift' : 'send');
+      act({ counter: 'pay', holds: 'lift', order: 'send', trucks: 'take' }[kind]);
     } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing && data.items) {
       e.preventDefault();
       selected = (selected + (e.key === 'ArrowDown' ? 1 : -1) + data.items.length) % data.items.length;

@@ -37,6 +37,7 @@ First release.
 **Counter and police window** (`ui.menus`)
 - Impound counter: every vehicle of yours in the yard, the fee line by line (release, class, storage days, fine, tow), cash or bank, a held vehicle with the time left on its hold.
 - Officers: the tow order as a form (reason, fine with quick picks, hold and how long) and the holds at the counter with one button to lift each.
+- Company trucks at the office: the trucks with what each does, the deposit and how it comes back; taking a new truck while the old one is out says in the same window that the old deposit is kept. A refusal (spots taken, not enough for the deposit) shows in the window.
 - `ui.menus = 'ox'` keeps your server's ox_lib menus and dialogs instead.
 
 **Server owners**

@@ -75,6 +75,14 @@
 .dlg__keys kbd { display: inline-grid; place-items: center; min-width: calc(26 * var(--u)); height: calc(22 * var(--u)); padding: 0 calc(6 * var(--u)); border-radius: calc(3 * var(--u));
                  background: rgba(255, 255, 255, .1); color: var(--ink-muted); font: 600 calc(12 * var(--u)) var(--font-ui); }
 
+/* Company trucks: two or three choices need less room than the counter. */
+.dlg__win.is-narrow { width: calc(760 * var(--u)); grid-template-columns: calc(280 * var(--u)) 1fr; }
+.dlg__lead { margin: calc(-6 * var(--u)) 0 0; font-size: calc(17 * var(--u)); color: var(--ink-muted); }
+.dlg__warn { display: flex; flex-direction: column; gap: calc(4 * var(--u)); padding: calc(14 * var(--u)) calc(16 * var(--u)); border-radius: calc(8 * var(--u));
+             background: rgba(var(--accent-rgb), .1); box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), .35); }
+.dlg__warn b { font: 600 calc(16 * var(--u)) var(--font-ui); color: var(--accent-text); }
+.dlg__warn span { color: var(--ink-muted); }
+
 /* The tow order form */
 .dlg__veh { display: flex; flex-direction: column; gap: calc(12 * var(--u)); padding: calc(4 * var(--u)) calc(8 * var(--u)); }
 .dlg__veh .plate { align-self: flex-start; font-size: calc(24 * var(--u)); padding: calc(4 * var(--u)) calc(13 * var(--u)); border-radius: calc(4 * var(--u)); }

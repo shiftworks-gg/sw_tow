@@ -68,7 +68,7 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `contracts.enabled` | true | NPC jobs when no player is calling |
 | `abandoned.minutes`, `abandoned.owned` | 30, false | When a left vehicle becomes a call; whether owned vehicles count |
 | `sounds` | game sounds on | Ramps, winch motor, straps and tow arm; each can be swapped or muted |
-| `ui.menus` | `'shiftworks'` | The call list in the panel's place (nearest first, an arrow to each call, its pay; chosen from the keyboard while driving) and the impound counter, police holds and tow order as one window in the panel's colours; `'ox'` uses your ox_lib menus and dialogs |
+| `ui.menus` | `'shiftworks'` | The call list in the panel's place (nearest first, an arrow to each call, its pay; chosen from the keyboard while driving) and the company trucks, impound counter, police holds and tow order as one window in the panel's colours; `'ox'` uses your ox_lib menus and dialogs |
 | `ui` | `shiftworks` theme, right edge, accent `auto` | Shift panel theme (`shiftworks`, `ox`, `mission`, `compact`), accent (follows `ox:primaryColor` when you set it), colours, font, opacity, side, height, size, header label, logo |
 
 ### Make it look like your server

@@ -1,5 +1,5 @@
----The Shiftworks window (html/dialog.js): the impound counter, the officer's holds and the tow
----order. One window at a time; while it is open the page has the mouse and keyboard.
+---The Shiftworks window (html/dialog.js): the impound counter, the officer's holds, the tow order
+---and the company trucks at the office. One window at a time; while it is open the page has the mouse and keyboard.
 ---With config.ui.menus = 'ox' none of this is used and the modules show ox_lib menus instead.
 local config = require 'config'
 
@@ -19,6 +19,7 @@ dialog.STRING_KEYS = {
     'lift', 'lifting', 'fine_of',
     'order_title', 'reason', 'reason_hint', 'reason_needed', 'fine', 'fine_hint', 'hold', 'hold_hint', 'hold_for',
     'until_lifted', 'send', 'sending', 'vehicle',
+    'deposit', 'deposit_back', 'deposit_back_damage', 'replace_title', 'take_truck', 'take_truck_for', 'taking', 'take_short',
 }
 
 ---The game's name for a vehicle model, e.g. "Sultan".
@@ -43,7 +44,7 @@ function dialog.current()
 end
 
 ---Opens the window.
----@param kind 'counter'|'holds'|'order'
+---@param kind 'counter'|'holds'|'order'|'trucks'
 ---@param data table
 ---@param opts? { focus?: boolean } focus = false shows it without taking the mouse (filming)
 function dialog.open(kind, data, opts)
@@ -68,7 +69,7 @@ end
 
 ---What happens when the player uses the window. The handler returns what the page shows next:
 ---{ close = true } closes it, { error = text } shows the text, { data = table } redraws it.
----@param action string 'pay', 'lift' or 'send'
+---@param action string 'pay', 'lift', 'send' or 'take'
 ---@param fn fun(body: table): table?
 function dialog.on(action, fn)
     handlers[action] = fn
