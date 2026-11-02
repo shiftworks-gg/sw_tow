@@ -46,5 +46,7 @@ files {
     'html/app.js',
     'html/dialog.css',
     'html/dialog.js',
+    'html/calls.css',
+    'html/calls.js',
     'html/fonts/*.woff2',
 }

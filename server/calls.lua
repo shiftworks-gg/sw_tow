@@ -4,6 +4,7 @@
 local config = require 'config'
 local framework = require 'bridge.loader'
 local integrations = require 'bridge.integrations'
+local util = require 'shared.util'
 local guard = require 'server.guard'
 local log = require 'server.log'
 local shift = require 'server.shift'
@@ -197,6 +198,16 @@ function calls.cancelByCaller(src)
     return false
 end
 
+---What a delivery of this call pays if the vehicle goes to the closest yard (the worker's share,
+---without a partner's). Shown in the list as an estimate: another yard pays by its own distance.
+---@param call SwCall
+---@return integer
+function calls.estimatePay(call)
+    local _, distance = util.nearestYard(call.coords, config.yards)
+    if distance == math.huge then return 0 end
+    return math.floor(util.deliveryPay(config.payout, distance) * (call.payFactor or 1.0))
+end
+
 lib.callback.register('sw_tow:server:listCalls', function(src)
     if not shift.get(src) then return {} end
     local list = {}
@@ -210,6 +221,7 @@ lib.callback.register('sw_tow:server:listCalls', function(src)
                 message = call.message,
                 age = os.time() - call.createdAt,
                 mine = call.worker == src,
+                pay = calls.estimatePay(call),
             }
         end
     end

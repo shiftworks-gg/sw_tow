@@ -5,13 +5,17 @@
   <title>Shiftworks Tow</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dialog.css">
+  <link rel="stylesheet" href="calls.css">
 </head>
 <body>
   <!-- app.js builds the layout of the configured theme inside this section. -->
   <section class="sw" id="panel" aria-live="polite" hidden></section>
   <!-- Counter, police holds and tow order: a window that takes the mouse while open. -->
   <section class="dlg" id="dialog" hidden></section>
+  <!-- Call list (F6): in the panel's place, read from the keyboard by Lua, no focus. -->
+  <section class="sw cl" id="calls" hidden></section>
   <script src="app.js"></script>
   <script src="dialog.js"></script>
+  <script src="calls.js"></script>
 </body>
 </html>

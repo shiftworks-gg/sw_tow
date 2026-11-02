@@ -1,4 +1,5 @@
----The workers' call list (ox_lib context menu until the panel ships) and the route to an accepted call.
+---Calls on the client: the route to an accepted call, ending the shift, and the ox_lib menu of calls
+---(config.ui.menus = 'ox'; the Shiftworks list is client/calllist.lua).
 local config = require 'config'
 local notify = require 'client.notify'
 local util = require 'shared.util'
@@ -242,10 +243,13 @@ local function runRoute()
     routing = false
 end
 
+---@param coords vector3
+---@return string
 local function streetAt(coords)
     local street = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
     return GetStreetNameFromHashKey(street)
 end
+calls.streetAt = streetAt
 
 local function minutes(seconds)
     return math.max(1, math.floor(seconds / 60))
@@ -343,7 +347,8 @@ local function endShiftOption()
     return { title = locale('shift.end'), description = description, icon = 'right-from-bracket', onSelect = calls.endShift }
 end
 
-local function openList()
+---The calls as an ox_lib menu.
+local function openMenu()
     if not shift.onShift() then return end
     local list = calls.list()
 
@@ -379,15 +384,23 @@ local function openList()
     lib.showContext('sw_tow_calls')
 end
 
-calls.openList = openList
+calls.openMenu = openMenu
 
-RegisterCommand(config.calls.listCommand, openList, false)
+---Opens the call list. client/calllist.lua puts the Shiftworks list here; the ox_lib menu otherwise.
+---@param opts? { select?: integer } select: the call to highlight (filming)
+---@diagnostic disable-next-line: unused-local
+function calls.openList(opts) openMenu() end
+
+---Closes the call list.
+function calls.closeList() lib.hideContext() end
+
+RegisterCommand(config.calls.listCommand, function() calls.openList() end, false)
 
 lib.addKeybind({
     name = 'sw_tow_calls',
     description = locale('calls.keybind'),
     defaultKey = config.calls.listKey,
-    onPressed = openList,
+    onPressed = function() calls.openList() end,
 })
 
 RegisterNetEvent('sw_tow:client:callClosed', function(id)

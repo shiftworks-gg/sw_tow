@@ -72,6 +72,27 @@ function util.nearestSpot(coords, spots)
     return best, bestDistance
 end
 
+---The yard whose hand-over zone is closest to a point.
+---@param coords vector3
+---@param yards table<string, table> config.yards
+---@return table? yard, number distance, string? key
+function util.nearestYard(coords, yards)
+    local best, bestDistance, bestKey = nil, math.huge, nil
+    for key, yard in pairs(yards) do
+        local d = #(coords - yard.zone.coords)
+        if d < bestDistance then best, bestDistance, bestKey = yard, d, key end
+    end
+    return best, bestDistance, bestKey
+end
+
+---Pay for one delivery, before a call's payFactor and partner shares.
+---@param payout table config.payout
+---@param distance number metres from pickup to yard
+---@return integer
+function util.deliveryPay(payout, distance)
+    return math.min(payout.max, math.floor(payout.base + payout.perKm * distance / 1000))
+end
+
 ---@param value any
 ---@return boolean
 function util.isInteger(value)

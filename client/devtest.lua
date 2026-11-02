@@ -1057,9 +1057,9 @@ end
 
 ---Opens the call list (F6), then accepts the call as its button does.
 function film.acceptFromList(id, seconds)
-    calls.openList()
+    calls.openList({ select = id })
     Wait(seconds * 1000)
-    lib.hideContext()
+    calls.closeList()
     local call = findCall(function(c) return c.id == id end)
     if not call then return false end
     local ok, errorKey = calls.accept(call)

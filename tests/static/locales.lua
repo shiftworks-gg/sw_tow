@@ -101,6 +101,8 @@ local function usedKeys()
     for key in panel:gmatch("'([%w_]+)'") do used['panel.' .. key] = 'client/panel.lua' end
     local window = read('client/dialog.lua'):match('STRING_KEYS = (%b{})')
     for key in window:gmatch("'([%w_]+)'") do used['ui.' .. key] = 'client/dialog.lua' end
+    local list = read('client/calllist.lua'):match('STRING_KEYS = (%b{})')
+    for key in list:gmatch("'([%w_]+)'") do used['calls.' .. key] = 'client/calllist.lua' end
     return used
 end
 

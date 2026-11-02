@@ -5,6 +5,7 @@ local util = require 'shared.util'
 local shift = require 'client.shift'
 local calls = require 'client.calls'
 local dialog = require 'client.dialog'
+local calllist = require 'client.calllist'
 
 local ui = config.ui
 local visible = false
@@ -38,6 +39,7 @@ local function init()
         type = 'init',
         strings = strings,
         dialogStrings = dialogStrings,
+        callStrings = calllist.strings(),
         ui = {
             theme = ui.theme,
             accent = ui.accent,

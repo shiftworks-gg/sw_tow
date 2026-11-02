@@ -68,14 +68,14 @@ Everything is in `config.lua`, one comment per line. The parts people change mos
 | `contracts.enabled` | true | NPC jobs when no player is calling |
 | `abandoned.minutes`, `abandoned.owned` | 30, false | When a left vehicle becomes a call; whether owned vehicles count |
 | `sounds` | game sounds on | Ramps, winch motor, straps and tow arm; each can be swapped or muted |
-| `ui.menus` | `'shiftworks'` | Impound counter, police holds and the tow order as one window in the panel's colours (fee line by line, cash or bank, hold timers, a form with quick picks); `'ox'` uses your ox_lib menus and dialogs |
+| `ui.menus` | `'shiftworks'` | The call list in the panel's place (nearest first, an arrow to each call, its pay; chosen from the keyboard while driving) and the impound counter, police holds and tow order as one window in the panel's colours; `'ox'` uses your ox_lib menus and dialogs |
 | `ui` | `shiftworks` theme, right edge, accent `auto` | Shift panel theme (`shiftworks`, `ox`, `mission`, `compact`), accent (follows `ox:primaryColor` when you set it), colours, font, opacity, side, height, size, header label, logo |
 
 ### Make it look like your server
 
-Menus, dialogs, the counter, the call list, text hints and notifications are drawn by your own `ox_lib`, so they already look like the rest of your server, also when you restyled ox_lib or replaced its interface. sw_tow adds no style of its own to them.
+Text hints, progress bars, the office menus and notifications are drawn by your own `ox_lib`, so they already look like the rest of your server, also when you restyled ox_lib or replaced its interface.
 
-The only screen of its own is the shift panel. Pick how far it blends in:
+sw_tow's own screens are the shift panel, the call list and the counter and police window. They share the panel's theme and colours; `ui.menus = 'ox'` hands the call list, counter and police dialogs to ox_lib as well. Pick how far the panel blends in:
 
 | You want | Set in `config.lua` |
 |---|---|

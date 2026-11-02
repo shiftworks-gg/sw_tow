@@ -120,7 +120,15 @@
     "type_contract": "Vertrag",
     "type_abandoned": "Verlassen",
     "unavailable": "Abschleppanrufe sind auf diesem Server nicht verfügbar.",
-    "cancel_loaded": "Dein Fahrzeug ist schon auf dem Abschleppwagen. Der Anruf kann jetzt nicht storniert werden."
+    "cancel_loaded": "Dein Fahrzeug ist schon auf dem Abschleppwagen. Der Anruf kann jetzt nicht storniert werden.",
+    "nearest": "nächste zuerst",
+    "take": "Auftrag annehmen",
+    "drop": "Auftrag abgeben",
+    "your_call": "Dein Auftrag",
+    "just_now": "gerade eben",
+    "min_ago": "vor %s Min.",
+    "keys_choose": "wählen",
+    "keys_close": "schließen"
   },
   "impound": {
     "counter": "Schalter Verwahrplatz",

@@ -16,8 +16,8 @@ return {
 
     ui = {                       -- Shift panel shown while on shift. Restyle it here, no code changes needed.
         enabled = true,          -- false hides the panel; notifications and menus still work.
-        menus = 'shiftworks',    -- Impound counter, police holds and tow order: 'shiftworks' (a window in the
-                                 -- panel's colours and font) | 'ox' (your server's ox_lib menus and dialogs).
+        menus = 'shiftworks',    -- Call list (F6), impound counter, police holds and tow order: 'shiftworks'
+                                 -- (in the panel's colours and font) | 'ox' (your server's ox_lib menus and dialogs).
         theme = 'shiftworks',    -- 'shiftworks' (card with countdown ring) | 'ox' (the card in ox_lib's colours and font) | 'mission' (no box, like GTA objectives) | 'compact' (two small pills).
         accent = 'auto',         -- 'auto': your ox_lib colour if you set one (setr ox:primaryColor), else orange. Or a colour like '#ff7a2e'.
         position = 'right',      -- Screen edge: 'right' or 'left'.

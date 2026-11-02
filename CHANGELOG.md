@@ -29,6 +29,11 @@ First release.
 - Your own HUD instead: `ui.enabled = false` and `exports.sw_tow:GetShiftState()` on the client.
 - Menus, dialogs and notifications are your server's ox_lib as it is. `notify.custom` sends notifications to any other script; `notify.style = 'shiftworks'` gives the dark Shiftworks look.
 
+**Call list** (`F6`, `ui.menus`)
+- Opens in the panel's place and is used from the keyboard without the mouse, also while driving: arrows or the mouse wheel choose, `Enter` takes, `Esc` closes.
+- Calls nearest first, each with an arrow pointing where it is, the distance, its kind and what the delivery pays to the closest yard. The chosen call shows the plate, how long ago it came in and the caller's note.
+- Your own call comes first and is dropped with `Enter`; End shift is the last row. The list updates while open when calls come or go.
+
 **Counter and police window** (`ui.menus`)
 - Impound counter: every vehicle of yours in the yard, the fee line by line (release, class, storage days, fine, tow), cash or bank, a held vehicle with the time left on its hold.
 - Officers: the tow order as a form (reason, fine with quick picks, hold and how long) and the holds at the counter with one button to lift each.

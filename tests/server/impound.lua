@@ -38,6 +38,24 @@ test.case('a player call delivered: worker paid, vehicle stored with its fee, ca
     w:assertNoErrors()
 end)
 
+test.case('the call list shows what the delivery pays, payFactor included', function()
+    local w = newWorld()
+    local t = flow.towedToYard(w)
+    test.eq(flow.calls(w, t.worker)[1].pay, PAY, 'listed before delivery')
+    local bankBefore = w:money(t.worker, 'bank')
+    test.accepted(flow.deliver(w, t.worker, t.truck))
+    test.eq(w:money(t.worker, 'bank') - bankBefore, PAY, 'paid what the list said')
+
+    w:module('server.calls').add({ type = 'abandoned', plate = 'AB1', coords = World.FAR, message = '', payFactor = 0.6 })
+    w:advance(2)
+    local listed
+    for _, call in ipairs(flow.calls(w, t.worker)) do
+        if call.plate == 'AB1' then listed = call.pay end
+    end
+    test.eq(listed, math.floor(PAY * 0.6), 'abandoned: 60 %')
+    w:assertNoErrors()
+end)
+
 test.case('the public impound lot cannot hand out a held vehicle', function()
     local w = newWorld()
     local t = flow.towedToYard(w)

@@ -120,7 +120,15 @@
     "type_contract": "Contract",
     "type_abandoned": "Abandoned",
     "unavailable": "Tow calls are not available on this server.",
-    "cancel_loaded": "Your vehicle is already on the truck. The call cannot be cancelled now."
+    "cancel_loaded": "Your vehicle is already on the truck. The call cannot be cancelled now.",
+    "nearest": "nearest first",
+    "take": "Take the call",
+    "drop": "Drop the call",
+    "your_call": "Your call",
+    "just_now": "just now",
+    "min_ago": "%s min ago",
+    "keys_choose": "choose",
+    "keys_close": "close"
   },
   "impound": {
     "counter": "Impound counter",

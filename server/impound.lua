@@ -88,8 +88,7 @@ end
 ---@param distance number meters from pickup to yard
 ---@return integer
 local function deliveryPay(distance)
-    local p = config.payout
-    return math.min(p.max, math.floor(p.base + p.perKm * distance / 1000))
+    return util.deliveryPay(config.payout, distance)
 end
 
 ---@class SwPayment
