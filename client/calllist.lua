@@ -62,14 +62,15 @@ local function sound(name)
     PlaySoundFrontend(-1, name, 'HUD_FRONTEND_DEFAULT_SOUNDSET', true)
 end
 
----Where a point is seen from the camera, in degrees clockwise: 0 straight ahead, 90 to the right.
+---Where a point is seen from the camera on screen (also a scripted one), in degrees clockwise: 0 straight
+---ahead, 90 to the right.
 ---@param coords vector3
 ---@return integer
 local function bearing(coords)
     local from = GetEntityCoords(cache.ped)
     local target = GetHeadingFromVector_2d(coords.x - from.x, coords.y - from.y)
     -- Headings turn anticlockwise, the page rotates clockwise.
-    return math.floor((GetGameplayCamRot(2).z - target) % 360 + 0.5)
+    return math.floor((GetFinalRenderedCamRot(2).z - target) % 360 + 0.5)
 end
 
 ---The last row: end the shift, or keep working while on the way back.
