@@ -151,6 +151,11 @@ on a simulated FiveM server, Lua 5.4) and the static analysis. CI runs both on e
 development server `/swtow_test` plays the main flows in game with your own character. See
 [docs/TESTING.md](docs/TESTING.md).
 
+## Support
+
+- Questions and help: [Shiftworks Discord](https://discord.gg/YvUjCQbJe9).
+- Bugs and ideas: [GitHub issues](https://github.com/shiftworksgg/sw_tow/issues). Paste the output of `swtow_selftest` and the console lines that start with `[sw_tow]`.
+
 ## Credits
 
 - Contract spots: from `qbx_towjob` by the Qbox project (GPL-3.0).
