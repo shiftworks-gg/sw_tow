@@ -187,6 +187,7 @@
     "distance": "Entfernung",
     "deliver_within": "Abliefern in",
     "waiting": "Warte auf Auftrag",
+    "call_open": "%s Auftrag offen.",
     "calls_open": "%s Aufträge offen.",
     "open_short": "%s offen",
     "take_hint": "Mit {key} einen annehmen.",

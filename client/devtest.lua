@@ -30,6 +30,7 @@ local impound = require 'client.impound'
 local panel = require 'client.panel'
 local police = require 'client.police'
 local dialog = require 'client.dialog'
+local calllist = require 'client.calllist'
 
 local FLATBED, HOOK
 for index, option in ipairs(config.garage.vehicles) do
@@ -1001,6 +1002,18 @@ function film.call(car, message)
     return lib.callback.await('sw_tow:dev:filmCall', false, VehToNet(car), message)
 end
 
+---NPC contracts appear on the list (the nearest free roadside spots); returns their call ids.
+---@param count integer
+---@return integer[]
+function film.contracts(count)
+    local ids = {}
+    for _ = 1, count do
+        local id = lib.callback.await('sw_tow:dev:contract', false)
+        if id then ids[#ids + 1] = id end
+    end
+    return ids
+end
+
 function film.closeCall(id)
     return lib.callback.await('sw_tow:dev:closeCall', false, id)
 end
@@ -1055,9 +1068,24 @@ end
 -- The menus and forms, shown on screen as a player would see them and then carried out through the
 -- same functions their buttons call. Each shows for `seconds`.
 
----Opens the call list (F6), then accepts the call as its button does.
+---Opens the call list (F6) as a player does: the choice walks down to the call, it stays on screen
+---for `seconds`, then Enter takes it.
 function film.acceptFromList(id, seconds)
-    calls.openList({ select = id })
+    if dialog.enabled() then
+        calls.openList()
+        Wait(900)
+        if not calllist.walkTo(id, 450) then
+            calls.closeList()
+            return false
+        end
+        Wait(seconds * 1000)
+        calllist.press()
+        local deadline = GetGameTimer() + 5000
+        while calllist.isOpen() and GetGameTimer() < deadline do Wait(50) end
+        local active = calls.active()
+        return active ~= nil and active.id == id
+    end
+    calls.openList()
     Wait(seconds * 1000)
     calls.closeList()
     local call = findCall(function(c) return c.id == id end)

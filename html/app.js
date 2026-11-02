@@ -250,7 +250,7 @@
     const key = `<span class="key">${escape(ui.key || 'F6')}</span>`;
     if (short) return `${open ? escape(text('open_short', open)) : ''} ${key}`;
     const take = escape(text('take_hint')).replace('{key}', key);
-    return open ? `${escape(text('calls_open', open))} ${take}` : escape(text('no_calls'));
+    return open ? `${escape(text(open === 1 ? 'call_open' : 'calls_open', open))} ${take}` : escape(text('no_calls'));
   }
 
   function payout(earned) {

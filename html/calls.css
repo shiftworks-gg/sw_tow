@@ -1,8 +1,10 @@
 /* Shiftworks Tow: the call list (calls.js). A card in the panel's place, from the same tokens as the
    panel (style.css), so themes, colours and the server's ox_lib accent apply to it as well. */
 
-/* While the list is open it stands where the panel is. */
-.calls-open #panel { opacity: 0; }
+/* While the list is open it stands where the panel is. One of them at a time: the panel goes at once
+   and the list fades in; on closing the list goes at once and the panel fades back. */
+.calls-open #panel { opacity: 0; transition: none; }
+#calls[hidden] { transition: none; }
 
 .cl { --t: var(--ink-muted); }
 .cl__card { width: calc(400 * var(--u)); }

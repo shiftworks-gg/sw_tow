@@ -226,6 +226,36 @@ function calllist.close()
     if not isOpen then return end
     isOpen = false
     send('callsClose')
+    -- The panel comes back at once with what just changed (a call taken), not up to a second later.
+    TriggerEvent('sw_tow:client:panelRefresh')
+end
+
+---@return boolean
+function calllist.isOpen()
+    return isOpen
+end
+
+---Filming: moves the choice to a call row by row, as the arrow keys do.
+---@param id integer
+---@param stepMs integer
+---@return boolean found
+function calllist.walkTo(id, stepMs)
+    for _ = 1, #entries do
+        local target
+        for i, entry in ipairs(entries) do
+            if entry.call and entry.call.id == id then target = i end
+        end
+        if not target or not isOpen then return false end
+        if target == selected then return true end
+        move(target > selected and 1 or -1)
+        Wait(stepMs)
+    end
+    return false
+end
+
+---Filming: Enter on the chosen row.
+function calllist.press()
+    if isOpen and not busy then choose() end
 end
 
 ---Keys of the calls section the page uses.

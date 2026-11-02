@@ -187,6 +187,7 @@
     "distance": "Distance",
     "deliver_within": "Deliver within",
     "waiting": "Waiting for a call",
+    "call_open": "%s call open.",
     "calls_open": "%s calls open.",
     "open_short": "%s open",
     "take_hint": "Press {key} to take one.",

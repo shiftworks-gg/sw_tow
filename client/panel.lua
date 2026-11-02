@@ -16,7 +16,7 @@ local STRING_KEYS = {
     'title_idle', 'title_player', 'title_police', 'title_contract', 'title_abandoned',
     'do_pickup', 'do_load', 'do_deliver', 'step_pickup', 'step_load', 'step_deliver',
     'at_pickup', 'at_yard', 'left', 'distance', 'deliver_within',
-    'waiting', 'calls_open', 'open_short', 'take_hint', 'no_calls',
+    'waiting', 'call_open', 'calls_open', 'open_short', 'take_hint', 'no_calls',
     'truck', 'no_truck', 'cargo', 'empty', 'earned', 'tows', 'km', 'm',
     'status_winching', 'status_lowering', 'status_secured', 'status_hooked',
     'do_return', 'do_office', 'title_return', 'at_depot',
@@ -134,6 +134,11 @@ local function snapshot()
     end
     return state
 end
+
+-- Something the panel shows changed just now (the call list closed after taking a call).
+AddEventHandler('sw_tow:client:panelRefresh', function()
+    if visible then SendNUIMessage({ type = 'state', state = snapshot() }) end
+end)
 
 local function show(value)
     if visible == value then return end
