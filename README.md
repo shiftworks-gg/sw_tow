@@ -16,6 +16,10 @@ Multiplayer towing job with player calls, police orders and an impound yard. Fre
 - **Server decides.** Every action is checked on the server: shift, truck, distance, rate and trip time. Refused actions are logged, never punished.
 - **Leaves service vehicles alone.** Emergency and military vehicles are towed only on an accepted call and never flagged as abandoned.
 - **Partner pay.** A second worker in the truck gets 50% of the delivery pay on top.
+- **Pay and deposit.** Pay adds up during the shift and is paid at the office, also after a disconnect. A truck goes out for a $500 deposit that comes back when it is handed in, minus damage.
+- **Shift panel.** A card at the screen edge built around the next step: where to go, how far, time left, what is on the truck, what the shift has earned. Four themes, one in your ox_lib colours.
+- **Call list for drivers.** `F6` opens the calls in the panel's place, nearest first, each with an arrow to it, its distance and what it pays. Arrow keys or the mouse wheel and `Enter`: no mouse, you can choose while driving.
+- **Counter and police windows.** The owner sees the fee line by line and pays cash or bank; officers fill the tow order as a form and lift holds with one button. `ui.menus = 'ox'` uses your ox_lib menus instead.
 
 ## Requirements
 
