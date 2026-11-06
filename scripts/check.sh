@@ -40,7 +40,7 @@ fetch qbx_core https://github.com/Qbox-project/qbx_core "$QBX_CORE_VERSION"
 
 work="$cache/work"
 rm -rf "$work" && mkdir -p "$work/sw_tow"
-cp -r "$root/bridge" "$root/client" "$root/server" "$root/shared" "$root/data" "$root/config.lua" "$root/fxmanifest.lua" "$work/sw_tow/"
+cp -r "$root/bridge" "$root/client" "$root/server" "$root/shared" "$root/data" "$root/config.lua" "$work/sw_tow/"
 cat > "$work/sw_tow/.luarc.json" <<JSON
 {
   "runtime.version": "Lua 5.4",
