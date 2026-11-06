@@ -154,7 +154,7 @@ development server `/swtow_test` plays the main flows in game with your own char
 ## Support
 
 - Questions and help: [Shiftworks Discord](https://discord.gg/YvUjCQbJe9).
-- Bugs and ideas: [GitHub issues](https://github.com/crazyghostgg/sw_tow/issues). Paste the output of `swtow_selftest` and the console lines that start with `[sw_tow]`.
+- Bugs and ideas: [GitHub issues](https://github.com/shiftworks-gg/sw_tow/issues). Paste the output of `swtow_selftest` and the console lines that start with `[sw_tow]`.
 
 ## Credits
 

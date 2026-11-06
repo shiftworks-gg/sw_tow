@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.1
+
+The project now lives at github.com/shiftworks-gg/sw_tow (releases and the update check use this address). No changes to the script itself.
+
+## 1.0.0
 
 First release.
 

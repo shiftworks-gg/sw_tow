@@ -6,9 +6,9 @@ use_experimental_fxv2_oal 'yes'
 name 'sw_tow'
 author 'Shiftworks'
 description 'Shiftworks Tow & Impound: multiplayer towing job with player calls and an impound yard'
-version '1.0.0'
+version '1.0.1'
 license 'GPL-3.0-or-later'
-repository 'https://github.com/crazyghostgg/sw_tow'
+repository 'https://github.com/shiftworks-gg/sw_tow'
 
 ox_lib 'locale'
 
