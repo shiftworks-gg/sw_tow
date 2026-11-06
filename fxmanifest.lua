@@ -8,7 +8,7 @@ author 'Shiftworks'
 description 'Shiftworks Tow & Impound: multiplayer towing job with player calls and an impound yard'
 version '1.0.0'
 license 'GPL-3.0-or-later'
-repository 'https://github.com/shiftworksgg/sw_tow'
+repository 'https://github.com/crazyghostgg/sw_tow'
 
 ox_lib 'locale'
 
