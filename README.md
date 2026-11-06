@@ -52,6 +52,17 @@ sw_tow 1.0.0 self-test, 2026-10-27 16:54:33 · 14 PASS · 0 WARN · 0 FAIL
 
 A mistake in `config.lua` stops the start with every problem named, for example `config.lua → payout.account: must be one of cash, bank, is wallet`.
 
+## Updating
+
+The server console prints one line when a newer release is out: `[sw_tow] Update available: 1.0.0 → 1.0.1`.
+
+1. Copy your `config.lua` somewhere safe.
+2. Delete the old `sw_tow` folder and put the new one in its place.
+3. Put your `config.lua` back, unless the release notes say **Config: changed**. Then open the new `config.lua`, copy your values into it and keep the new lines.
+4. Restart the server. Database tables update themselves.
+
+Every release says on its first line whether `config.lua` changed. Installed with `git clone`? `git pull` keeps your edits; git tells you if they conflict with an update.
+
 ## Configuration
 
 Everything is in `config.lua`, one comment per line. The parts people change most:
