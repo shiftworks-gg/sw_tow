@@ -1,8 +1,13 @@
 name: check
 
+# Branch pushes and pull requests that touch code. Tags are tested by release.yml, and text-only
+# changes (README, CHANGELOG, docs) have nothing to test.
 on:
   push:
+    branches: ['**']
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
 
 jobs:
   lua:
