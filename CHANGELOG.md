@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+**Config: unchanged.** The development test runner (`/swtow_test`, only active with `setr sw_tow_dev 1`) no longer carries the studio's video-staging code. Nothing changes for servers that run the script.
+
 ## 1.0.1
 
 **Config: unchanged.** The project now lives at github.com/shiftworks-gg/sw_tow (releases and the update check use this address). No changes to the script itself.
